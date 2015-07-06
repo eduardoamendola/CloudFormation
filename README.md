@@ -6,6 +6,9 @@ Collection of templates and docs related to Cloud Formation during my studies
 
 ### Features
 
-### Limitations
+* Template-based
+* Only "Resources" is mandatory in template
+* A few resourcers can't be created through CFN, such as KeyPairs, R53 HostedZones, etc
 
+### Limitations
 
