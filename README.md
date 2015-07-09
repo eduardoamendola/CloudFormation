@@ -21,16 +21,15 @@ Collection of templates and docs related to Cloud Formation during my studies
 
 ### JSON Tools 
 
-* Validators:
-** JSONLint - The JSON Validator: http://jsonlint.com/
-** JSON Validator: http://www.freeformatter.com/json-validator.html
-** JSON formater and validator: http://jsonformatter.curiousconcept.com/
+#### Validators
+* JSONLint - The JSON Validator: http://jsonlint.com/
+* JSON Validator: http://www.freeformatter.com/json-validator.html
+* JSON formater and validator: http://jsonformatter.curiousconcept.com/
 
-* Viewers:
-** JQ - Lightweight and flexible command-line JSON processor: http://stedolan.github.io/jq/
+#### Viewers
+* JQ - Lightweight and flexible command-line JSON processor: http://stedolan.github.io/jq/
 
 ## Documentation
-
 * CloudFormation User-guide: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html
 * Developer Tools: http://aws.amazon.com/developertools/AWS-CloudFormation?browse=1
 * Official public articles and tutorials: http://aws.amazon.com/cloudformation/aws-cloudformation-articles-and-tutorials/
