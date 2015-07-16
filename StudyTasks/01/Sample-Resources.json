@@ -1,0 +1,411 @@
+{
+  "Outputs": {
+    
+    "FrontEndELB": {
+      "Description": "Front-End ELB Public URL",
+      "Value": { "Fn::GetAtt" : [ "FrontEndLoadBalancer", "DNSName" ] }
+    },
+    "FrontEndELBHostedZone": {
+      "Description": "Hosted Zone for ELB",
+      "Value": { "Fn::GetAtt" : [ "FrontEndLoadBalancer", "CanonicalHostedZoneNameID" ]}
+    }
+  },
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "sample - Resources",
+  "Parameters": {
+    "InstanceType": {
+      "Description": "sample - FrontEnd",
+      "Type": "String",
+      "Default": "c3.large",
+      "AllowedValues": [
+        "t1.micro", "t2.micro", "t2.small", "t2.medium",
+        "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge",
+        "m2.2xlarge", "m2.4xlarge",
+        "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge", "c1.medium",
+        "c1.xlarge",
+        "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge", 
+        "g2.2xlarge",
+        "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge", "i2.xlarge",
+        "i2.2xlarge", "i2.4xlarge", "i2.8xlarge", "hi1.4xlarge",
+        "hs1.8xlarge",
+        "cr1.8xlarge", "cc2.8xlarge", "cg1.4xlarge"
+      ],
+      "ConstraintDescription": "must be a valid EC2 instance type."
+    },
+    "FrontEndKeyName": {
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+    },
+    "SSHLocation": {
+      "Description": "The IP address range that can be used to SSH to the EC2 instances",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "79.97.142.38/32",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+    },
+    "VpcID": {
+      "Description": "VPC that will be used",
+      "Type": "String",
+      "Default": "vpc-c68ca1ad"
+    },
+    "DeployHomeFolder": {
+      "Description": "Home folder of Deploy user",
+      "Type": "String",
+      "Default": "/root/"
+    },
+    "FrontEndElbSubnetOne": {
+      "Description": "ELB Subnet one",
+      "Type": "String",
+      "Default": "subnet-xyz"
+    },
+    "FrontEndElbSubnetTwo": {
+      "Description": "ELB Subnet two",
+      "Type": "String",
+      "Default": "subnet-xzw"
+    }
+},
+  "Mappings": {
+    "AWSInstanceType2Arch": {
+      "t2.micro":     { "Arch": "HVM64" },
+      "t2.small":     { "Arch": "HVM64" },
+      "t2.medium":    { "Arch": "HVM64" },
+      "m3.medium":    { "Arch": "HVM64" },
+      "m3.large":     { "Arch": "HVM64" },
+      "m3.xlarge":    { "Arch": "HVM64" },
+      "m3.2xlarge":   { "Arch": "HVM64" },
+      "c3.large":     { "Arch": "HVM64" },
+      "c3.xlarge":    { "Arch": "HVM64" },
+      "c3.2xlarge":   { "Arch": "HVM64" },
+      "c3.4xlarge":   { "Arch": "HVM64" },
+      "c3.8xlarge":   { "Arch": "HVM64" },
+      "g2.2xlarge":   { "Arch": "HVMG2" },
+      "r3.large":     { "Arch": "HVM64" },
+      "r3.xlarge":    { "Arch": "HVM64" },
+      "r3.2xlarge":   { "Arch": "HVM64" },
+      "r3.4xlarge":   { "Arch": "HVM64" },
+      "r3.8xlarge":   { "Arch": "HVM64" },
+      "i2.xlarge":    { "Arch": "HVM64" },
+      "i2.2xlarge":   { "Arch": "HVM64" },
+      "i2.4xlarge":   { "Arch": "HVM64" },
+      "i2.8xlarge":   { "Arch": "HVM64" },
+      "hi1.4xlarge":  { "Arch": "HVM64" },
+      "hs1.8xlarge":  { "Arch": "HVM64" },
+      "cr1.8xlarge":  { "Arch": "HVM64" },
+      "cc2.8xlarge":  { "Arch": "HVM64" }
+    },
+    "AWSRegionArch2AMI": {
+      "us-east-1": { "HVM64": "ami-02f8b16a" },
+      "eu-west-1": { "HVM64": "ami-73f97204" },
+      "sa-east-1": { "HVM64": "ami-c344fbde" }
+    },
+    "Region2AZ": {
+      "us-west-1" : { "AZ" : ["us-west-1a", "us-west-1c"], "ZoneA" : "us-west-1a", "ZoneB" : "us-west-1c" },
+      "us-east-1" : { "AZ" : ["us-east-1a", "us-east-1d"], "ZoneA" : "us-east-1a", "ZoneB" : "us-east-1d" },
+      "eu-west-1" : { "AZ" : ["eu-west-1a", "eu-west-1c"], "ZoneA" : "eu-west-1a", "ZoneB" : "eu-west-1c" }
+    },
+    "GitRepo": {
+      "Website": { "Prod": "git@bitbucket.org:heitorlessa/dev-cs.git"}
+    }
+  },
+  "Resources": {
+   "EC2Ansible": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+         "AssumeRolePolicyDocument": {
+            "Version" : "2012-10-17",
+            "Statement": [ {
+               "Effect": "Allow",
+               "Principal": {
+                  "Service": [ "ec2.amazonaws.com" ]
+               },
+               "Action": [ "sts:AssumeRole" ]
+            } ]
+         },
+         "Path": "/",
+         "Policies": [ 
+         {
+            "PolicyName": "AttachEIP",
+            "PolicyDocument": {
+               "Version" : "2012-10-17",
+               "Statement": [ {
+                  "Effect": "Allow",
+                  "Action": "ec2:AssociateAddress",
+                  "Resource": "*"
+               }]
+            }
+         },
+         {
+            "PolicyName": "BitBucketKey",
+            "PolicyDocument": {
+               "Version" : "2012-10-17",
+               "Statement": [ {
+                  "Effect": "Allow",
+                  "Action": "s3:GetObject",
+                  "Resource": [ "arn:aws:s3:::lessa-eu", "arn:aws:s3:::lessa-eu/keys/bitbucket.pem"]
+               }]
+            }
+         }]
+      }
+   },
+    "AnsibleInstanceProfile": {
+      "DependsOn": "EC2Ansible",
+       "Type": "AWS::IAM::InstanceProfile",
+       "Properties": {
+          "Path": "/",
+          "Roles": [ {
+             "Ref": "EC2Ansible"
+          } ]
+       }
+    },
+  "FrontEndElbSecurityGroup": {
+    "Type": "AWS::EC2::SecurityGroup",
+    "Properties": {
+      "GroupDescription": "Enable HTTP and SSL publicly only",
+      "VpcId": { "Ref": "VpcID" },
+      "SecurityGroupIngress": [
+          { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" }
+      ],
+      "SecurityGroupEgress": [
+          { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "10.200.0.0/16" }
+      ],
+      "Tags": [
+          {
+              "Key" : "Name",
+              "Value" : "Public ELB"
+          }
+      ]
+    }
+  },
+  "FrontEndSecurityGroup": {
+    "DependsOn": "FrontEndElbSecurityGroup",
+    "Type": "AWS::EC2::SecurityGroup",
+    "Properties": {
+      "GroupDescription": "Enable SSH access and HTTP access on the configured port",
+      "VpcId": { "Ref": "VpcID" },
+      "SecurityGroupIngress": [
+          { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId": { "Ref": "FrontEndElbSecurityGroup" } },
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation" } }
+      ],
+      "SecurityGroupEgress": [
+          { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0" },
+          { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0" },
+          { "IpProtocol" : "udp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : "0.0.0.0/0" },
+          { "IpProtocol" : "udp", "FromPort" : "53", "ToPort" : "53", "CidrIp" : "8.8.8.8/32" },
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0" }
+      ],
+      "Tags": [
+          {
+              "Key" : "Name",
+              "Value" : "Front End"
+          }
+      ]
+    }
+  },
+  "FrontEndLoadBalancer": {
+    "DependsOn": "FrontEndElbSecurityGroup",
+    "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+    "Properties": {
+      "LoadBalancerName": "sample frontend LB",
+      "CrossZone": "true",
+      "Subnets": [ { "Ref": "FrontEndElbSubnetOne" }, { "Ref": "FrontEndElbSubnetOne" } ],
+      "SecurityGroups": [{ "Ref": "FrontEndElbSecurityGroup" }],
+      "Listeners": [
+        {
+          "LoadBalancerPort": "80",
+          "InstancePort": "80",
+          "Protocol": "HTTP"
+        }
+      ],
+      "HealthCheck": {
+        "Target": "HTTP:80/",
+        "HealthyThreshold": "2",
+        "UnhealthyThreshold": "2",
+        "Interval": "20",
+        "Timeout": "5"
+      },
+      "ConnectionDrainingPolicy": {
+        "Enabled": "true",
+        "Timeout": "60"
+      }
+    }
+  },
+    "FrontEndAsGroup": {
+      "DependsOn": [ "FrontEndAsLaunchConfig", "FrontEndLoadBalancer" ],
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "AvailabilityZones": { "Fn::FindInMap" : [ "Region2AZ", { "Ref" : "AWS::Region" }, "AZ" ] },
+        "VPCZoneIdentifier": [ { "Ref": "FrontEndElbSubnetOne" }, { "Ref": "FrontEndElbSubnetTwo" } ],
+        "LaunchConfigurationName": { "Ref": "FrontEndAsLaunchConfig" },
+        "HealthCheckType": "ELB",
+        "HealthCheckGracePeriod": "150",
+        "Cooldown": "150",
+        "MinSize": "2",
+        "MaxSize": "3",
+        "LoadBalancerNames": [{ "Ref": "FrontEndLoadBalancer" }],
+        "Tags": [
+            {
+                "Key" : "Name",
+                "Value" : "Front End",
+                "PropagateAtLaunch": "true"
+            }
+        ]
+      },
+      "UpdatePolicy": {
+        "AutoScalingRollingUpdate": {
+          "MinInstancesInService": "2",
+          "MaxBatchSize": "1",
+          "PauseTime": "PT5M",
+          "WaitOnResourceSignals": "true"
+        }
+      }
+    },
+    "FrontEndAsLaunchConfig": {
+      "DependsOn": [ "FrontEndSecurityGroup", "EC2Ansible", "AnsibleInstanceProfile" ],
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "install": [ "cfn-files", "pre-install", "setup" ]
+          },
+
+            "cfn-files": {
+
+              "files": {
+
+                "/etc/cfn/cfn-hup.conf" : {
+                "content" : { "Fn::Join" : ["", [
+                  "[main]\n",
+                  "stack=", { "Ref" : "AWS::StackName" }, "\n",
+                  "region=", { "Ref" : "AWS::Region" }, "\n",
+                  "interval=1\n"
+                ]]},
+                "mode"    : "000400",
+                "owner"   : "root",
+                "group"   : "root"
+                },
+
+                "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                  "content": { "Fn::Join" : ["", [
+                    "[cfn-auto-reloader-hook]\n",
+                    "triggers=post.update\n",
+                    "path=Resources.FrontEndAsLaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+                    "action=/usr/local/bin/cfn-init -c install -s ",
+                        { "Ref" : "AWS::StackName" }, " -r FrontEndAsGroup ",
+                         "           --region ", { "Ref" : "AWS::Region" }, "\n",
+                         "           runas=root\n"
+                    ]]
+                  }
+                }
+              }
+            },
+
+            "pre-install": {
+              "packages": {
+                
+                "apt": {
+                  "python-crypto": [],
+                  "python-selinux": [],
+                  "git": [],
+                  "htop": [],
+                  "build-essential": [],
+                  "libevent-dev": []
+                },
+
+                "python": {
+                  "ansible": [],
+                  "awscli": []
+                }
+              },
+
+              "files": {
+
+                "/root/.ssh/config" : {
+                "content" : { "Fn::Join" : ["", [
+                  "Host bitbucket.org\n",
+                    "HostName bitbucket.org\n",
+                    "User git\n",
+                    "IdentityFile ", { "Ref": "DeployHomeFolder" }, ".ssh/bitbucket.pem\n"
+                ]]},
+                "mode"    : "000400",
+                "owner"   : "root",
+                "group"   : "root"
+                }
+              },  
+
+              "commands": {
+
+                "s3bitbucket": {
+                  "command": "aws s3 cp s3://lessa-eu/keys/bitbucket.pem .ssh/ && chmod 400 .ssh/bitbucket.pem",
+                  "test": "test ! -e .ssh/bitbucket.pem",
+                  "cwd": { "Ref": "DeployHomeFolder" },
+                  "ignoreErrors": "false"
+                },
+
+                "addBitBucketPubKey": {
+                  "command": "ssh-keyscan -H bitbucket.org >> .ssh/known_hosts",
+                  "test": "test ! -e .ssh/known_hosts",
+                  "cwd": { "Ref": "DeployHomeFolder" },
+                  "ignoreErrors": "false"
+                },
+
+                "createWebFolder": {
+                  "command": "mkdir /web -m 770",
+                  "test": "test ! -d /web",
+                  "ignoreErrors": "false"
+                }
+              } 
+            },
+
+            "setup": {
+
+              "commands": {
+                "ansible-pull": {
+                  "command": "ansible-pull -o -d /tmp/deployment -U git@bitbucket.org:heitorlessa/deployment.git -i /tmp/deployment/local_host",
+                  "test": "test ! -d deployment",
+                  "cwd": "/tmp",
+                  "ignoreErrors": "false"
+                }
+              }
+            }
+        }
+      },      
+      "Properties": {
+        "KeyName": { "Ref": "FrontEndKeyName" },
+        "ImageId": { "Fn::FindInMap": 
+          [
+            "AWSRegionArch2AMI", { "Ref": "AWS::Region" },
+            { "Fn::FindInMap": [ "AWSInstanceType2Arch", { "Ref": "InstanceType" }, "Arch" ] }
+          ]
+        },
+        "SecurityGroups": [{ "Ref": "FrontEndSecurityGroup" }],
+        "InstanceType": { "Ref": "InstanceType" },
+        "IamInstanceProfile": { "Ref": "AnsibleInstanceProfile" },
+        "AssociatePublicIpAddress": "true",
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": ["",
+              [
+                "#!/bin/bash\n",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games\n",
+                "apt-get update -y\n",
+                "apt-get install python-setuptools\n",
+                "easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+                "cfn-init -c install -s ", { "Ref" : "AWS::StackName" }, " -r FrontEndAsLaunchConfig ",
+                "         --region ", { "Ref" : "AWS::Region" }, "\n",
+                "mkdir -m 770 /web", "\n",
+                "git clone ", { "Fn::FindInMap" : [ "GitRepo", "Website", "Prod" ]}, " /web/sample/ &", "\n",
+                "cfn-signal -e $? ",
+                "         --stack ", { "Ref" : "AWS::StackName" },
+                "         --resource FrontEndAsLaunchConfig ",
+                "         --region ", { "Ref" : "AWS::Region" }, "\n"
+              ]
+            ]
+          }
+        }
+      }
+    }
+  } 
+}

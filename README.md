@@ -33,3 +33,7 @@ Collection of templates and docs related to Cloud Formation during my studies
 * CloudFormation User-guide: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html
 * Developer Tools: http://aws.amazon.com/developertools/AWS-CloudFormation?browse=1
 * Official public articles and tutorials: http://aws.amazon.com/cloudformation/aws-cloudformation-articles-and-tutorials/
+
+### CFN-Init
+
+* It runs as root and it uses sh shell
