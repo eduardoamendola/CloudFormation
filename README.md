@@ -12,6 +12,8 @@ Collection of templates and docs related to Cloud Formation during my studies
 
 ### Limitations
 
+* It's not possible to migrate resources into CFN that were already manually created outside of CFN without tearing it all down and rebuilding it from CFN. One option would be to use CloudFormer to create a template, and then edit it and schedulle a maintenance window to migrate them little by little, preferably by truncating the template into several nested ones as well.
+
 ### Tips and A-HA moments
 
 * Always use tags where possible, so you won't have issues with resources changing ids due updates
