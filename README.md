@@ -4,6 +4,19 @@ Collection of templates and docs related to Cloud Formation during my studies
 
 ## Notes 
 
+### Goals
+
+* Be comfortable reading JSON templates
+* Be able to easily search for AWS resources of any type
+* Understand the various CFN-related tools (cloud-init vs. cfn-init, cfn-hup and cfn-signal)
+* Hold a wide breadth of understanding of various AWS Services, and how they would be built on CFN
+* Be able to explain the following:
+** WaitConditions
+** Ref calls
+** Parameters
+** Mappings 
+* Understand the relationship between CFN calls and the HTTPS APIs for the various services. 
+
 ### Features
 
 * Template-based
