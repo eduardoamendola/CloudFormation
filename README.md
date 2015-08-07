@@ -12,6 +12,7 @@ Collection of templates and docs related to Cloud Formation during my studies
 * Hold a wide breadth of understanding of various AWS Services, and how they would be built on CFN
 * Be able to explain the following: WaitConditions, Ref calls, Parameters, Mappings 
 * Understand the relationship between CFN calls and the HTTPS APIs for the various services. 
+* Understand how to use custom resources (Lambda functions, SNS topics, etc)
 
 ### Features
 
