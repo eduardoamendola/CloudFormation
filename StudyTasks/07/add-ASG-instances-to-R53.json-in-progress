@@ -1,0 +1,156 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Example template to automatically register AutoScaling instances to the R53",
+  "Parameters": {
+    "AMI": {
+      "Description": "AMI ID that is going to be used by the ASG",
+      "Type": "String",
+      "Default": "ami-e4d18e93",
+      "MinLength": "10",
+      "MaxLength": "15"
+    },
+    "KeyName": {
+      "Description": "Name of Key Pair that is going to be used by the instances launched in ASG",
+      "Type": "String",
+      "Default": "LinuxKey"
+    },
+    "InstanceType": {
+      "Description": "Instance Type that is going to be set-up for the instances in ASG",
+      "Type": "String",
+      "Default": "t2.micro"
+    },
+    "HostedZone" : {
+      "Description" : "Zone Name, ex: test.com",
+      "Type" : "String",
+      "MinLength" : "1",
+      "ConstraintDescription" : "You must input the Zone"
+    }
+  },
+  "Resources": {
+    "CustomLC": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "config": ["json", "execute"]
+          },
+          "json": {
+            "files": {
+              "/tmp/route53.json": {
+                "content": {
+                  "Fn::Join": [
+                    "\n",
+                    [
+                      "{",
+                      "  \"Comment\": \"ASG Scaled instance record\",",
+                      "  \"Changes\": [",
+                      "    {",
+                      "      \"Action\": \"CREATE\",",
+                      "      \"ResourceRecordSet\": {",
+                      "        \"Name\": \"test.",
+                      {
+                        "Ref": "HostedZone"
+                      },
+                      "\",",
+                      "        \"Type\": \"A\",",
+                      "        \"TTL\": 60,",
+                      "        \"ResourceRecords\": [",
+                      "          {",
+                      "            \"Value\": \"hostip\"",
+                      "          }",
+                      "        ]",
+                      "      }",
+                      "    }",
+                      "  ]",
+                      "}"
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "execute": {
+            "commands": {
+              "creat_json": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -v",
+                      "\n",
+                      "hostname=$(curl http://169.254.169.254/latest/meta-data/instance-id)\n",
+                      "hostip=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)\n",
+                      "sed -i 's/hostname/'$hostname'/g' /tmp/route53.json\n",
+                      "sed -i 's/hostip/'$hostip'/g' /tmp/route53.json\n",
+                      "/usr/bin/aws route53 change-resource-record-sets --hosted-zone-id ",
+                      { 
+                        "Fn::GetAtt" : ["HostedZone", "CanonicalHostedZoneNameID"] 
+                      },
+                      " --change-batch file:///tmp/route53.json --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "waitAfterCompletion": "0"
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "ImageId": {
+          "Ref": "AMI"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -v","\n",
+                "/opt/aws/bin/cfn-init -c config -s ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " -r ASCONF",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "CustomASG" : {
+      "Type" : "AWS::AutoScaling::AutoScalingGroup",
+      "Properties" : {
+        "AvailabilityZones" : { "Fn::GetAZs" : "" },
+        "LaunchConfigurationName" : { "Ref" : "CustomLC" },
+        "MinSize" : "2",
+        "MaxSize" : "2"
+      }
+    }
+  },
+  "Outputs": {
+    "AutoScalingGroup" : {
+      "Value" : { "Ref": "CustomASG" }
+    },
+    "LaunchConfiguration" : { 
+      "Value" : { "Ref": "CustomLC" }
+    },
+    "HostedZoneId" : { 
+      "Value" : { "Fn::GetAtt" : ["HostedZone", "CanonicalHostedZoneNameID"] }
+    }
+  }
+}
