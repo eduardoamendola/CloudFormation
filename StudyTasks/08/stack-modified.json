@@ -1,0 +1,154 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CFN template that sets the permissions for Lambda Function to receive SNS messages as event sources",
+    "Parameters": {
+        "s3BucketWithFunctions": {
+            "Description": "Name of S3 bucket where the Lambda functions are hosted in",
+            "Type": "String",
+            "Default": "lambda-studies"
+        },
+        "LambdaFunctionPackage": {
+            "Description": "Name of zip file that contains the Lambda function",
+            "Type": "String",
+            "Default": "TestFunction.zip"
+        },
+        "LambdaPermissionsPackage": {
+            "Description": "Name of zip file that contains the extra Lambda function that sets permissions to the SNS topic automatically",
+            "Type": "String",
+            "Default": "SetsPermissionsForSNSTopic.zip"
+        }
+    },
+    "Resources": {
+        "Lambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "s3BucketWithFunctions"
+                    },
+                    "S3Key": {
+                        "Ref": "LambdaFunctionPackage"
+                    }
+                },
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "nodejs"
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "LambdaPermissions": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecRole",
+                        "Arn"
+                    ]
+                },
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "s3BucketWithFunctions"
+                    },
+                    "S3Key": {
+                        "Ref": "LambdaPermissionsPackage"
+                    }
+                },
+                "Runtime": "nodejs"
+            }
+        },
+        "LambdaPermissionsResource": {
+            "Type": "Custom::LambdaPermissionsResource",
+            "DependsOn": [
+                "LambdaPermissions",
+                "Lambda",
+                "Topic"
+            ],
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "LambdaPermissions",
+                        "Arn"
+                    ]
+                },
+                "Region": {
+                    "Ref": "AWS::Region"
+                },
+                "LambdaFx": {
+                    "Fn::GetAtt": [
+                        "Lambda",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "LambdaExecRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Sid": ""
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:*"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                },
+                                {
+                                    "Action": [
+                                        "lambda:*"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "AllowActions"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "Topic": {
+            "Properties": {
+                "DisplayName": "My topic",
+                "Subscription": [
+                    {
+                        "Endpoint": "eduardoamendola@gmail.com",
+                        "Protocol": "email"
+                    },
+                    {
+                        "Endpoint": {
+                            "Fn::GetAtt": [
+                                "Lambda",
+                                "Arn"
+                            ]
+                        },
+                        "Protocol": "lambda"
+                    }
+                ]
+            },
+            "Type": "AWS::SNS::Topic"
+        }
+    }
+}
