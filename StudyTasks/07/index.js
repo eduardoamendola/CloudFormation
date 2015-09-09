@@ -7,7 +7,6 @@ AWS.config.apiVersions = {
 	 
 exports.handler = function(event, context) {
 	
-	var responseStatus = "FAILED";
     var responseData = {};
 
 	// DynamoDB hard-coded table name with same name set in CFN template
@@ -20,22 +19,28 @@ exports.handler = function(event, context) {
 	// Logging event received from SNS (It goes automatically to CloudWatch)
 	console.log('### DEBUG ###\nReceived event:', JSON.stringify(event, null, 2));
 	
-	// Getting SNS message
+	// Getting SNS message and logging it for debugging purposes
 	var SNSmessage = event.Records[0].Sns.Message.toString();
 	console.log('### DEBUG ###\nSNSmessage:', SNSmessage);
 
+  // Logging SNS timestamp, as well as the time the lambda function gets triggered
+  var SNSPublishTime = event.Records[0].Sns.Timestamp.toString();
+  var LambdaReceiveTime = new Date().toString();
+  console.log('### DEBUG ###\nSNSPublishTime:', SNSPublishTime);
+  console.log('### DEBUG ###\nLambdaReceiveTime:', LambdaReceiveTime);
+    
 	// Creating items to add to DynamoDB
-	var SNSPublishTime = event.Records[0].Sns.Timestamp.toString();
-  	var LambdaReceiveTime = new Date().toString();
-  	var CustomItem = SNSPublishTime + "\n" + LambdaReceiveTime + "\n" + SNSmessage
-  	var itemParams = {
+  var CustomItem = SNSmessage;
+  var itemParams = {
   		Item: {
   			status: {
   				S: CustomItem
-  			} 
-  		}
-  	};
-  	console.log('### DEBUG ###\nitemParams:', itemParams);
+  		} 
+  	}
+  };
+  
+  // Logging itemParams for debugging
+  console.log('### DEBUG ###\nitemParams:', itemParams);
 	
 	// Adding to DynamoDB table
 	DynamoDBTable.putItem(
@@ -47,65 +52,11 @@ exports.handler = function(event, context) {
                 context.fail("Failed to process " + event.Records.length + " records.");
 		    }
             else {
-                responseStatus = "SUCCESS";
                 responseData = {Success: "### DEBUG ###\nItems added to DynamoDB"};
              	console.log(responseData.Success + ":\n", data);   
              	context.succeed("Successfully processed " + event.Records.length + " records.");
             }
         }
     );
-
-    // Sending responde to Lambda Function
-    //sendResponse(event, context, responseStatus, responseData);  
 };
 
-
-// Send response to the pre-signed S3 URL
-function sendResponse(event, context, responseStatus, responseData) {
-
-    var responseBody = JSON.stringify({
-        Status: responseStatus,
-        Reason: "See the details in CloudWatch Log Stream: " + context.logStreamName,
-        PhysicalResourceId: context.logStreamName,
-        StackId: event.StackId,
-        RequestId: event.RequestId,
-        LogicalResourceId: event.LogicalResourceId,
-        Data: responseData
-    });
-
-    console.log("RESPONSE BODY:\n", responseBody);
-
-    var https = require("https");
-    var url = require("url");
-
-    var parsedUrl = url.parse(event.ResponseURL);
-    var options = {
-        hostname: parsedUrl.hostname,
-        port: 443,
-        path: parsedUrl.path,
-        method: "PUT",
-        headers: {
-            "content-type": "",
-            "content-length": responseBody.length
-        }
-    };
-
-    console.log("SENDING RESPONSE...\n");
-
-    var request = https.request(options, function(response) {
-        console.log("STATUS: " + response.statusCode);
-        console.log("HEADERS: " + JSON.stringify(response.headers));
-        // Tell AWS Lambda that the function execution is done
-        context.done();
-    });
-
-    request.on("error", function(error) {
-        console.log("sendResponse Error:" + error);
-        // Tell AWS Lambda that the function execution is done
-        context.done();
-    });
-
-    // write data to request body
-    request.write(responseBody);
-    request.end();
-}
