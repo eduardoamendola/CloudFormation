@@ -10,7 +10,7 @@
         "LambdaFunctionPackage": {
             "Description": "Name of zip file that contains the Lambda function",
             "Type": "String",
-            "Default": "TestFunction.zip"
+            "Default": "functions/TestFunction.zip"
         }
     },
     "Resources": {
@@ -40,7 +40,13 @@
             "Properties": {
                 "FunctionName" : { "Fn::GetAtt" : ["Lambda", "Arn"] },
                 "Action": "lambda:InvokeFunction",
-                "Principal": "sns.amazonaws.com"
+                "Principal": "sns.amazonaws.com",
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                }, 
+                "SourceArn": {
+                    "Ref": "Topic"
+                }
             }
         },
         "LambdaExecRole": {
