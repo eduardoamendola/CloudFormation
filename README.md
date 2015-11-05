@@ -28,7 +28,24 @@ Collection of templates and docs related to Cloud Formation during my studies
 ### Tips and A-HA moments
 
 * Always use tags where possible, so you won't have issues with resources changing ids due updates
+
 * Create security groups with nothing, and then add the rules after (to avoid circular dependency issues)
+
+* Whenever you create a stack through the AWS CLI, it uses Python 2.7 running Boto libs to connect to AWS via HTTP, through a regional endpoint of the service (i.e: https://cloudformation.eu-west-1.amazonaws.com/), via HTTPS, to make an HTTP POST to a rest API service, and then such api call that creates the stack. After that, it can return the following response codes:
+
+-- 200 (HTTP OK), which will also contain some data, such as the RequestID of the stack creation, as well as the ARN of the new stack that's being created. Example captured with --debug argument of the aws CLI command:
+
+<bash>
+
+$ aws cloudformation create-stack --stack-name ec2-bootstrapped-webserver --template-body file://~/Git/CloudFormation/StudyTasks/cfn-init/ec2-amazon-linux-apache-php.cform --parameters ParameterKey=KeyName,ParameterValue=AmazonLinuxIreland ParameterKey=InstanceType,ParameterValue=t1.micro --debug
+
+...
+
+2015-11-05 16:55:38,724 - MainThread - awscli.formatter - DEBUG - RequestId: 0a31c388-83de-11e5-b082-33dd0ab48d35
+arn:aws:cloudformation:eu-west-1:429230952994:stack/ec2-bootstrapped-webserver/0a3ff450-83de-11e5-8605-50a68645b2d2
+$
+
+</bash>
 
 ## Tools
 
