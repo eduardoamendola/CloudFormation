@@ -1,0 +1,319 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Nested stack to create EIPs and SGs for Parent stack to use to create end-to-end VPNs",
+  "Parameters": {
+    "VPC1": {
+      "Description": "VPC # 1",
+      "Type": "String"
+    },
+    "VPC2": {
+      "Description": "VPC # 2",
+      "Type": "String"
+    },
+    "CIDRVPC1": {
+      "Description": "CIDR of VPC # 1",
+      "Type": "String"
+    },
+    "CIDRVPC2": {
+      "Description": "CIDR of VPC # 1",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "IPAddressVPNInstanceVPC1": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "IPAddressVPNInstanceVPC2": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "IPAddressExtraInstanceVPC1": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "IPAddressExtraInstanceVPC2": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "VPNInstanceSecurityGroupVPC1": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC1"
+        },
+        "GroupDescription": "Enable SSH access via port 22, and internal access for the VPN",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Ref": "CIDRVPC1"
+            }
+          },
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Ref": "CIDRVPC2"
+            }
+          },
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "IPAddressVPNInstanceVPC1"
+                  },
+                  "/32"
+                ]
+              ]
+            }
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "VPNInstanceSecurityGroupVPC2": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC2"
+        },
+        "GroupDescription": "Enable SSH access via port 22, and internal access for the VPN",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Ref": "CIDRVPC2"
+            }
+          },
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Ref": "CIDRVPC1"
+            }
+          },
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "IPAddressVPNInstanceVPC2"
+                  },
+                  "/32"
+                ]
+              ]
+            }
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "ExtraInstanceSecurityGroupVPC1": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC1"
+        },
+        "GroupDescription": "Enable SSH access via port 22, and internal access for the VPN",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Ref": "CIDRVPC1"
+            }
+          },
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Ref": "CIDRVPC2"
+            }
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "ExtraInstanceSecurityGroupVPC2": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "DependsOn": "IPAddressExtraInstanceVPC2",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC2"
+        },
+        "GroupDescription": "Enable SSH access via port 22, and internal access for the VPN",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Ref": "CIDRVPC1"
+            }
+          },
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": {
+              "Ref": "CIDRVPC2"
+            }
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "IPAddressVPNInstanceVPC1": {
+      "Value": {
+        "Ref": "IPAddressVPNInstanceVPC1"
+      }
+    },
+    "AllocationIdVPNInstanceVPC1": {
+      "Value": {
+        "Fn::GetAtt": [
+          "IPAddressVPNInstanceVPC1",
+          "AllocationId"
+        ]
+      }
+    },
+    "IPAddressVPNInstanceVPC2": {
+      "Value": {
+        "Ref": "IPAddressVPNInstanceVPC2"
+      }
+    },
+    "AllocationIdVPNInstanceVPC2": {
+      "Value": {
+        "Fn::GetAtt": [
+          "IPAddressVPNInstanceVPC2",
+          "AllocationId"
+        ]
+      }
+    },
+    "IPAddressExtraInstanceVPC1": {
+      "Value": {
+        "Ref": "IPAddressExtraInstanceVPC1"
+      }
+    },
+    "AllocationIdExtraInstanceVPC1": {
+      "Value": {
+        "Fn::GetAtt": [
+          "IPAddressExtraInstanceVPC1",
+          "AllocationId"
+        ]
+      }
+    },
+    "IPAddressExtraInstanceVPC2": {
+      "Value": {
+        "Ref": "IPAddressExtraInstanceVPC2"
+      }
+    },
+    "AllocationIdExtraInstanceVPC2": {
+      "Value": {
+        "Fn::GetAtt": [
+          "IPAddressExtraInstanceVPC2",
+          "AllocationId"
+        ]
+      }
+    },
+    "VPNInstanceSecurityGroupVPC1": {
+      "Value": {
+        "Ref": "VPNInstanceSecurityGroupVPC1"
+      }
+    },
+    "VPNInstanceSecurityGroupVPC2": {
+      "Value": {
+        "Ref": "VPNInstanceSecurityGroupVPC2"
+      }
+    },
+    "ExtraInstanceSecurityGroupVPC1": {
+      "Value": {
+        "Ref": "ExtraInstanceSecurityGroupVPC1"
+      }
+    },
+    "ExtraInstanceSecurityGroupVPC2": {
+      "Value": {
+        "Ref": "ExtraInstanceSecurityGroupVPC2"
+      }
+    }
+  }
+}

@@ -1,0 +1,1513 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Study task 02 - Openswan VPN setup between 2 VPCs",
+  "Parameters": {
+    "InstanceType": {
+      "Description": "EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t1.micro",
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "m1.small",
+        "m1.medium",
+        "m1.large",
+        "m1.xlarge",
+        "m2.xlarge",
+        "m2.2xlarge",
+        "m2.4xlarge",
+        "m3.medium",
+        "m3.large",
+        "m3.xlarge",
+        "m3.2xlarge",
+        "c1.medium",
+        "c1.xlarge",
+        "c3.large",
+        "c3.xlarge",
+        "c3.2xlarge",
+        "c3.4xlarge",
+        "c3.8xlarge",
+        "c4.large",
+        "c4.xlarge",
+        "c4.2xlarge",
+        "c4.4xlarge",
+        "c4.8xlarge",
+        "g2.2xlarge",
+        "r3.large",
+        "r3.xlarge",
+        "r3.2xlarge",
+        "r3.4xlarge",
+        "r3.8xlarge",
+        "i2.xlarge",
+        "i2.2xlarge",
+        "i2.4xlarge",
+        "i2.8xlarge",
+        "d2.xlarge",
+        "d2.2xlarge",
+        "d2.4xlarge",
+        "d2.8xlarge",
+        "hi1.4xlarge",
+        "hs1.8xlarge",
+        "cr1.8xlarge",
+        "cc2.8xlarge",
+        "cg1.4xlarge"
+      ],
+      "ConstraintDescription": "must be a valid EC2 instance type."
+    },
+    "KeyName": {
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Default": "LinuxKey",
+      "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+    },
+    "CIDRVPC1": {
+      "Description": "CIDR of VPC # 1",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "192.168.100.0/24",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+    },
+    "CIDRVPC2": {
+      "Description": "CIDR of VPC # 2",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "192.168.200.0/24",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+    },
+    "PrivateIPonVPNInstanceVPC1": {
+      "Description": "Private IP on VPN Instance on VPC 1",
+      "Type": "String",
+      "MinLength": "7",
+      "MaxLength": "20",
+      "Default": "192.168.100.5",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})",
+      "ConstraintDescription": "must be a valid IP of the form x.x.x.x"
+    },
+    "PrivateIPonVPNInstanceVPC2": {
+      "Description": "Private IP on VPN Instance on VPC 2",
+      "Type": "String",
+      "MinLength": "7",
+      "MaxLength": "20",
+      "Default": "192.168.200.5",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})",
+      "ConstraintDescription": "must be a valid IP of the form x.x.x.x"
+    },
+    "PSK": {
+      "Description": "Pre Shared Key for VPN connection",
+      "Type": "String",
+      "MinLength": "20",
+      "Default": "d5g2sI7aSBU6mJtz9qcH",
+      "ConstraintDescription": "Use a long and strong key"
+    }
+  },
+  "Mappings": {
+    "AWSInstanceType2Arch": {
+      "t1.micro": {
+        "Arch": "PV64"
+      },
+      "t2.micro": {
+        "Arch": "HVM64"
+      },
+      "t2.small": {
+        "Arch": "HVM64"
+      },
+      "t2.medium": {
+        "Arch": "HVM64"
+      },
+      "m1.small": {
+        "Arch": "PV64"
+      },
+      "m1.medium": {
+        "Arch": "PV64"
+      },
+      "m1.large": {
+        "Arch": "PV64"
+      },
+      "m1.xlarge": {
+        "Arch": "PV64"
+      },
+      "m2.xlarge": {
+        "Arch": "PV64"
+      },
+      "m2.2xlarge": {
+        "Arch": "PV64"
+      },
+      "m2.4xlarge": {
+        "Arch": "PV64"
+      },
+      "m3.medium": {
+        "Arch": "HVM64"
+      },
+      "m3.large": {
+        "Arch": "HVM64"
+      },
+      "m3.xlarge": {
+        "Arch": "HVM64"
+      },
+      "m3.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "c1.medium": {
+        "Arch": "PV64"
+      },
+      "c1.xlarge": {
+        "Arch": "PV64"
+      },
+      "c3.large": {
+        "Arch": "HVM64"
+      },
+      "c3.xlarge": {
+        "Arch": "HVM64"
+      },
+      "c3.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "c3.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "c3.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "c4.large": {
+        "Arch": "HVM64"
+      },
+      "c4.xlarge": {
+        "Arch": "HVM64"
+      },
+      "c4.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "c4.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "c4.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "g2.2xlarge": {
+        "Arch": "HVMG2"
+      },
+      "r3.large": {
+        "Arch": "HVM64"
+      },
+      "r3.xlarge": {
+        "Arch": "HVM64"
+      },
+      "r3.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "r3.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "r3.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "i2.xlarge": {
+        "Arch": "HVM64"
+      },
+      "i2.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "i2.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "i2.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "d2.xlarge": {
+        "Arch": "HVM64"
+      },
+      "d2.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "d2.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "d2.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "hi1.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "hs1.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "cr1.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "cc2.8xlarge": {
+        "Arch": "HVM64"
+      }
+    },
+    "AWSInstanceType2NATArch": {
+      "t1.micro": {
+        "Arch": "NATPV64"
+      },
+      "t2.micro": {
+        "Arch": "NATHVM64"
+      },
+      "t2.small": {
+        "Arch": "NATHVM64"
+      },
+      "t2.medium": {
+        "Arch": "NATHVM64"
+      },
+      "m1.small": {
+        "Arch": "NATPV64"
+      },
+      "m1.medium": {
+        "Arch": "NATPV64"
+      },
+      "m1.large": {
+        "Arch": "NATPV64"
+      },
+      "m1.xlarge": {
+        "Arch": "NATPV64"
+      },
+      "m2.xlarge": {
+        "Arch": "NATPV64"
+      },
+      "m2.2xlarge": {
+        "Arch": "NATPV64"
+      },
+      "m2.4xlarge": {
+        "Arch": "NATPV64"
+      },
+      "m3.medium": {
+        "Arch": "NATHVM64"
+      },
+      "m3.large": {
+        "Arch": "NATHVM64"
+      },
+      "m3.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "m3.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c1.medium": {
+        "Arch": "NATPV64"
+      },
+      "c1.xlarge": {
+        "Arch": "NATPV64"
+      },
+      "c3.large": {
+        "Arch": "NATHVM64"
+      },
+      "c3.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c3.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c3.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c3.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c4.large": {
+        "Arch": "NATHVM64"
+      },
+      "c4.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c4.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c4.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c4.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "g2.2xlarge": {
+        "Arch": "NATHVMG2"
+      },
+      "r3.large": {
+        "Arch": "NATHVM64"
+      },
+      "r3.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "r3.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "r3.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "r3.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "i2.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "i2.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "i2.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "i2.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "d2.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "d2.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "d2.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "d2.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "hi1.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "hs1.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "cr1.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "cc2.8xlarge": {
+        "Arch": "NATHVM64"
+      }
+    },
+    "AWSRegionArch2AMI": {
+      "us-east-1": {
+        "PV64": "ami-5fb8c835",
+        "HVM64": "ami-60b6c60a",
+        "HVMG2": "ami-e998ea83"
+      },
+      "us-west-2": {
+        "PV64": "ami-d93622b8",
+        "HVM64": "ami-f0091d91",
+        "HVMG2": "ami-315f4850"
+      },
+      "us-west-1": {
+        "PV64": "ami-56ea8636",
+        "HVM64": "ami-d5ea86b5",
+        "HVMG2": "ami-943956f4"
+      },
+      "eu-west-1": {
+        "PV64": "ami-95e33ce6",
+        "HVM64": "ami-bff32ccc",
+        "HVMG2": "ami-83fd23f0"
+      },
+      "eu-central-1": {
+        "PV64": "ami-794a5915",
+        "HVM64": "ami-bc5b48d0",
+        "HVMG2": "ami-ba1a09d6"
+      },
+      "ap-northeast-1": {
+        "PV64": "ami-393c1957",
+        "HVM64": "ami-383c1956",
+        "HVMG2": "ami-08e5c166"
+      },
+      "ap-southeast-1": {
+        "PV64": "ami-34bd7a57",
+        "HVM64": "ami-c9b572aa",
+        "HVMG2": "ami-5a15d239"
+      },
+      "ap-southeast-2": {
+        "PV64": "ami-ced887ad",
+        "HVM64": "ami-48d38c2b",
+        "HVMG2": "ami-0c1a446f"
+      },
+      "sa-east-1": {
+        "PV64": "ami-7d15ad11",
+        "HVM64": "ami-6817af04",
+        "HVMG2": "NOT_SUPPORTED"
+      },
+      "cn-north-1": {
+        "PV64": "ami-18ac6575",
+        "HVM64": "ami-43a36a2e",
+        "HVMG2": "NOT_SUPPORTED"
+      }
+    }
+  },
+  "Resources": {
+    "VPC1": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": {
+          "Ref": "CIDRVPC1"
+        }
+      }
+    },
+    "VPC2": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": {
+          "Ref": "CIDRVPC2"
+        }
+      }
+    },
+    "NestedElasticIPsAndSecGroups": {
+      "Type": "AWS::CloudFormation::Stack",
+      "DependsOn": [
+        "VPC1",
+        "VPC2"
+      ],
+      "Properties": {
+        "TemplateURL": "https://s3-eu-west-1.amazonaws.com/cfn-templates-edu/NestedElasticIPsAndSecGroups.cform",
+        "Parameters": {
+          "VPC1": {
+            "Ref": "VPC1"
+          },
+          "VPC2": {
+            "Ref": "VPC2"
+          },
+          "CIDRVPC1": {
+            "Ref": "CIDRVPC1"
+          },
+          "CIDRVPC2": {
+            "Ref": "CIDRVPC2"
+          }
+        }
+      }
+    },
+    "SubnetVPC1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC1"
+        },
+        "CidrBlock": {
+          "Ref": "CIDRVPC1"
+        },
+        "MapPublicIpOnLaunch": "true"
+      }
+    },
+    "SubnetVPC2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC2"
+        },
+        "CidrBlock": {
+          "Ref": "CIDRVPC2"
+        },
+        "MapPublicIpOnLaunch": "true"
+      }
+    },
+    "InternetGatewayVPC1": {
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "InternetGatewayVPC2": {
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "AttachGatewayVPC1": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC1"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGatewayVPC1"
+        }
+      }
+    },
+    "AttachGatewayVPC2": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC2"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGatewayVPC2"
+        }
+      }
+    },
+    "RouteTableVPC1": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC1"
+        }
+      }
+    },
+    "RouteTableVPC2": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC2"
+        }
+      }
+    },
+    "RouteVPC1": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": "AttachGatewayVPC1",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RouteTableVPC1"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "InternetGatewayVPC1"
+        }
+      }
+    },
+    "RouteVPC2": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": "AttachGatewayVPC2",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RouteTableVPC2"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "InternetGatewayVPC2"
+        }
+      }
+    },
+    "SubnetRouteTableAssociationVPC1": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "SubnetVPC1"
+        },
+        "RouteTableId": {
+          "Ref": "RouteTableVPC1"
+        }
+      }
+    },
+    "SubnetRouteTableAssociationVPC2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "SubnetVPC2"
+        },
+        "RouteTableId": {
+          "Ref": "RouteTableVPC2"
+        }
+      }
+    },
+    "NetworkAclVPC1": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC1"
+        }
+      }
+    },
+    "NetworkAclVPC2": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC2"
+        }
+      }
+    },
+    "InboundNetworkAclEntryVPC1": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "NetworkAclVPC1"
+        },
+        "RuleNumber": "100",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "Egress": "false",
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+    "OutboundNetworkAclEntryVPC1": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "NetworkAclVPC1"
+        },
+        "RuleNumber": "100",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "Egress": "true",
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+    "InboundNetworkAclEntryVPC2": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "NetworkAclVPC2"
+        },
+        "RuleNumber": "100",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "Egress": "false",
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+    "OutboundNetworkAclEntryVPC2": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "NetworkAclVPC2"
+        },
+        "RuleNumber": "100",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "Egress": "true",
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+    "SubnetNetworkAclAssociationVPC1": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "SubnetVPC1"
+        },
+        "NetworkAclId": {
+          "Ref": "NetworkAclVPC1"
+        }
+      }
+    },
+    "SubnetNetworkAclAssociationVPC2": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "SubnetVPC2"
+        },
+        "NetworkAclId": {
+          "Ref": "NetworkAclVPC2"
+        }
+      }
+    },
+    "VpcEIPAssocVPNInstanceVPC1": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "InstanceId": {
+          "Ref": "VPNInstanceVPC1"
+        },
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "NestedElasticIPsAndSecGroups",
+            "Outputs.AllocationIdVPNInstanceVPC1"
+          ]
+        },
+        "NetworkInterfaceId": {
+          "Ref": "ENIVPNInstanceVPC1"
+        },
+        "PrivateIpAddress": {
+                    "Ref": "PrivateIPonVPNInstanceVPC1"
+        }
+      }
+    },
+    "VpcEIPAssocVPNInstanceVPC2": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "InstanceId": {
+          "Ref": "VPNInstanceVPC2"
+        },
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "NestedElasticIPsAndSecGroups",
+            "Outputs.AllocationIdVPNInstanceVPC2"
+          ]
+        },
+        "NetworkInterfaceId": {
+          "Ref": "ENIVPNInstanceVPC2"
+        },
+        "PrivateIpAddress": {
+                    "Ref": "PrivateIPonVPNInstanceVPC2"
+        }
+      }
+    },
+    "VpcEIPAssocIPAddressExtraInstanceVPC1": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "InstanceId": {
+          "Ref": "ExtraInstanceVPC1"
+        },
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "NestedElasticIPsAndSecGroups",
+            "Outputs.AllocationIdExtraInstanceVPC1"
+          ]
+        }
+      }
+    },
+    "VpcEIPAssocIPAddressExtraInstanceVPC2": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "InstanceId": {
+          "Ref": "ExtraInstanceVPC2"
+        },
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "NestedElasticIPsAndSecGroups",
+            "Outputs.AllocationIdExtraInstanceVPC2"
+          ]
+        }
+      }
+    },
+    "ENIVPNInstanceVPC1": {
+      "DependsOn": "NestedElasticIPsAndSecGroups",
+      "Type": "AWS::EC2::NetworkInterface",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "SubnetVPC1"
+        },
+        "Description": "Interface for VPN Instance on VPC 1",
+        "GroupSet": [
+          {
+            "Fn::GetAtt": [
+              "NestedElasticIPsAndSecGroups",
+              "Outputs.VPNInstanceSecurityGroupVPC1"
+            ]
+          }
+        ],
+        "PrivateIpAddress": {
+          "Ref" : "PrivateIPonVPNInstanceVPC1"
+        },
+        "SourceDestCheck": "false"
+      }
+    },
+    "ENIVPNInstanceVPC2": {
+      "DependsOn": "NestedElasticIPsAndSecGroups",
+      "Type": "AWS::EC2::NetworkInterface",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "SubnetVPC2"
+        },
+        "Description": "Interface for VPN Instance on VPC 2",
+        "GroupSet": [
+          {
+            "Fn::GetAtt": [
+              "NestedElasticIPsAndSecGroups",
+              "Outputs.VPNInstanceSecurityGroupVPC2"
+            ]
+          }
+        ],
+        "PrivateIpAddress": {
+            "Ref" : "PrivateIPonVPNInstanceVPC2"
+        },
+        "SourceDestCheck": "false"
+      }
+    },
+    "VPNInstanceVPC1": {
+      "DependsOn": [
+        "NestedElasticIPsAndSecGroups",
+        "ENIVPNInstanceVPC1", 
+        "AttachGatewayVPC1"
+      ],
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "Comment": "Install OpenSWAN",
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "InstallAndRun": [
+              "Install",
+              "Configure"
+            ]
+          },
+          "Install": {
+            "packages": {
+              "yum": {
+                "openswan": []
+              }
+            },
+            "files": {
+              "/etc/ipsec.d/vpn.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "conn vpn-conn\n",
+                      "  type=tunnel\n",
+                      "  authby=secret\n",
+                      "  left=%defaultroute\n",
+                      "  leftid=",
+                      {
+                        "Fn::GetAtt": [
+                          "NestedElasticIPsAndSecGroups",
+                          "Outputs.IPAddressVPNInstanceVPC1"
+                        ]
+                      },
+                      "\n",
+                      "  leftnexthop=%defaultroute\n",
+                      "  leftsubnet=",
+                      {
+                        "Ref": "CIDRVPC1"
+                      },
+                      "\n",
+                      "  right=",
+                      {
+                        "Fn::GetAtt": [
+                          "NestedElasticIPsAndSecGroups",
+                          "Outputs.IPAddressVPNInstanceVPC2"
+                        ]
+                      },
+                      "\n",
+                      "  rightsubnet=",
+                      {
+                        "Ref": "CIDRVPC2"
+                      },
+                      "\n",
+                      "  pfs=yes\n",
+                      "  auto=start\n"
+                    ]
+                  ]
+                },
+                "mode": "000600",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/ipsec.d/vpn.secrets": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "NestedElasticIPsAndSecGroups",
+                          "Outputs.IPAddressVPNInstanceVPC1"
+                        ]
+                      },
+                      " ",
+                      {
+                        "Fn::GetAtt": [
+                          "NestedElasticIPsAndSecGroups",
+                          "Outputs.IPAddressVPNInstanceVPC2"
+                        ]
+                      },
+                      " : PSK \"",
+                      {
+                        "Ref": "PSK"
+                      },
+                      "\""
+                    ]
+                  ]
+                },
+                "mode": "000600",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/sysctl.d/nat.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "net.ipv4.ip_forward = 1\n",
+                      "net.ipv4.conf.eth0.send_redirects = 0\n"
+                    ]
+                  ]
+                },
+                "mode": "000600",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      {
+                        "Ref": "AWS::StackId"
+                      },
+                      "\n",
+                      "region=",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.VPNInstanceVPC1.Metadata.AWS::CloudFormation::Init\n",
+                      "action=/opt/aws/bin/cfn-init -v ",
+                      "         --stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "         --resource VPNInstanceVPC1 ",
+                      "         --configsets InstallAndRun ",
+                      "         --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n",
+                      "runas=root\n"
+                    ]
+                  ]
+                }
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "ipsec": {
+                  "enabled": "true",
+                  "ensureRunning": "true"
+                },
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          },
+          "Configure": {
+            "commands": {
+              "00_modify_ipsec_conf": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "echo \"include /etc/ipsec.d/*.conf\" >> /etc/ipsec.conf\n"
+                    ]
+                  ]
+                }
+              },
+              "01_add_ipsec_tunnels": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "ipsec auto --add vpn-conn\n"
+                    ]
+                  ]
+                }
+              },
+              "02_config_ip_forwarding_and_redeirects": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "echo 1 >  /proc/sys/net/ipv4/ip_forward && echo 0 >  /proc/sys/net/ipv4/conf/eth0/send_redirects\n"
+                    ]
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "ImageId": {
+          "Fn::FindInMap": [
+            "AWSRegionArch2AMI",
+            {
+              "Ref": "AWS::Region"
+            },
+            {
+              "Fn::FindInMap": [
+                "AWSInstanceType2Arch",
+                {
+                  "Ref": "InstanceType"
+                },
+                "Arch"
+              ]
+            }
+          ]
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "NetworkInterfaces": [
+          {
+            "NetworkInterfaceId": {
+              "Ref": "ENIVPNInstanceVPC1"
+            },
+            "DeviceIndex": "0"
+          }
+          
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "yum update -y aws-cfn-bootstrap\n",
+                "/opt/aws/bin/cfn-init -v ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource VPNInstanceVPC1 ",
+                "         --configsets InstallAndRun ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "/opt/aws/bin/cfn-signal -e $? ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource VPNInstanceVPC1 ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+                "Count": "1",
+          "Timeout": "PT10M"
+        }
+      }
+    },
+    "VPNInstanceVPC2": {
+      "DependsOn": [
+        "NestedElasticIPsAndSecGroups",
+        "ENIVPNInstanceVPC2",        
+        "AttachGatewayVPC1"
+      ],
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "Comment": "Install OpenSWAN",
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "InstallAndRun": [
+              "Install",
+              "Configure"
+            ]
+          },
+          "Install": {
+            "packages": {
+              "yum": {
+                "openswan": []
+              }
+            },
+            "files": {
+              "/etc/ipsec.d/vpn.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "conn vpn-conn\n",
+                      "  type=tunnel\n",
+                      "  authby=secret\n",
+                      "  left=%defaultroute\n",
+                      "  leftid=",
+                      {
+                        "Fn::GetAtt": [
+                          "NestedElasticIPsAndSecGroups",
+                          "Outputs.IPAddressVPNInstanceVPC2"
+                        ]
+                      },
+                      "\n",
+                      "  leftnexthop=%defaultroute\n",
+                      "  leftsubnet=",
+                      {
+                        "Ref": "CIDRVPC2"
+                      },
+                      "\n",
+                      "  right=",
+                      {
+                        "Fn::GetAtt": [
+                          "NestedElasticIPsAndSecGroups",
+                          "Outputs.IPAddressVPNInstanceVPC1"
+                        ]
+                      },
+                      "\n",
+                      "  rightsubnet=",
+                      {
+                        "Ref": "CIDRVPC1"
+                      },
+                      "\n",
+                      "  pfs=yes\n",
+                      "  auto=start\n"
+                    ]
+                  ]
+                },
+                "mode": "000600",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/ipsec.d/vpn.secrets": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "NestedElasticIPsAndSecGroups",
+                          "Outputs.IPAddressVPNInstanceVPC2"
+                        ]
+                      },
+                      " ",
+                      {
+                        "Fn::GetAtt": [
+                          "NestedElasticIPsAndSecGroups",
+                          "Outputs.IPAddressVPNInstanceVPC1"
+                        ]
+                      },
+                      " : PSK \"",
+                      {
+                        "Ref": "PSK"
+                      },
+                      "\""
+                    ]
+                  ]
+                },
+                "mode": "000600",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/sysctl.d/nat.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "net.ipv4.ip_forward = 1\n",
+                      "net.ipv4.conf.eth0.send_redirects = 0\n"
+                    ]
+                  ]
+                },
+                "mode": "000600",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      {
+                        "Ref": "AWS::StackId"
+                      },
+                      "\n",
+                      "region=",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.VPNInstanceVPC2.Metadata.AWS::CloudFormation::Init\n",
+                      "action=/opt/aws/bin/cfn-init -v ",
+                      "         --stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "         --resource VPNInstanceVPC2 ",
+                      "         --configsets InstallAndRun ",
+                      "         --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n",
+                      "runas=root\n"
+                    ]
+                  ]
+                }
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "ipsec": {
+                  "enabled": "true",
+                  "ensureRunning": "true"
+                },
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          },
+          "Configure": {
+            "commands": {
+              "00_modify_ipsec_conf": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "echo \"include /etc/ipsec.d/*.conf\" >> /etc/ipsec.conf\n"
+                    ]
+                  ]
+                }
+              },
+              "01_add_ipsec_tunnels": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "ipsec auto --add vpn-conn\n"
+                    ]
+                  ]
+                }
+              },
+              "02_config_ip_forwarding_and_redeirects": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "echo 1 >  /proc/sys/net/ipv4/ip_forward && echo 0 >  /proc/sys/net/ipv4/conf/eth0/send_redirects\n"
+                    ]
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "ImageId": {
+          "Fn::FindInMap": [
+            "AWSRegionArch2AMI",
+            {
+              "Ref": "AWS::Region"
+            },
+            {
+              "Fn::FindInMap": [
+                "AWSInstanceType2Arch",
+                {
+                  "Ref": "InstanceType"
+                },
+                "Arch"
+              ]
+            }
+          ]
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "NetworkInterfaces": [
+          {
+            "NetworkInterfaceId": {
+              "Ref": "ENIVPNInstanceVPC2"
+            },
+            "DeviceIndex": "0"
+        }
+          
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "yum update -y aws-cfn-bootstrap\n",
+                "/opt/aws/bin/cfn-init -v ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource VPNInstanceVPC2 ",
+                "         --configsets InstallAndRun ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "/opt/aws/bin/cfn-signal -e $? ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource VPNInstanceVPC2 ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+                "Count": "1",
+          "Timeout": "PT10M"
+        }
+      }
+    },
+    "ExtraInstanceVPC1": {
+      "DependsOn": "NestedElasticIPsAndSecGroups",
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": {
+          "Fn::FindInMap": [
+            "AWSRegionArch2AMI",
+            {
+              "Ref": "AWS::Region"
+            },
+            {
+              "Fn::FindInMap": [
+                "AWSInstanceType2Arch",
+                {
+                  "Ref": "InstanceType"
+                },
+                "Arch"
+              ]
+            }
+          ]
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "NetworkInterfaces": [
+          {
+            "GroupSet": [
+              {
+                "Fn::GetAtt": [
+                  "NestedElasticIPsAndSecGroups",
+                  "Outputs.VPNInstanceSecurityGroupVPC1"
+                ]
+              }
+            ],
+            "AssociatePublicIpAddress": "true",
+            "DeviceIndex": "0",
+            "DeleteOnTermination": "true",
+            "SubnetId": {
+              "Ref": "SubnetVPC1"
+            }
+          }
+        ]
+      }
+    },
+    "ExtraInstanceVPC2": {
+      "DependsOn": "NestedElasticIPsAndSecGroups",
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": {
+          "Fn::FindInMap": [
+            "AWSRegionArch2AMI",
+            {
+              "Ref": "AWS::Region"
+            },
+            {
+              "Fn::FindInMap": [
+                "AWSInstanceType2Arch",
+                {
+                  "Ref": "InstanceType"
+                },
+                "Arch"
+              ]
+            }
+          ]
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "NetworkInterfaces": [
+          {
+            "GroupSet": [
+              {
+                "Fn::GetAtt": [
+                  "NestedElasticIPsAndSecGroups",
+                  "Outputs.VPNInstanceSecurityGroupVPC2"
+                ]
+              }
+            ],
+            "AssociatePublicIpAddress": "true",
+            "DeviceIndex": "0",
+            "DeleteOnTermination": "true",
+            "SubnetId": {
+              "Ref": "SubnetVPC2"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "VPNInstanceVPC1": {
+      "Value": {
+        "Fn::GetAtt": [
+          "VPNInstanceVPC1",
+          "PublicIp"
+        ]
+      }
+    },
+    "VPNInstanceVPC2": {
+      "Value": {
+        "Fn::GetAtt": [
+          "VPNInstanceVPC2",
+          "PublicIp"
+        ]
+      }
+    },
+    "ExtraInstanceVPC1": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ExtraInstanceVPC1",
+          "PublicIp"
+        ]
+      }
+    },
+    "ExtraInstanceVPC2": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ExtraInstanceVPC2",
+          "PublicIp"
+        ]
+      }
+    },
+    "PrivateIPonVPNInstanceVPC1": {
+      "Value" : {
+        "Ref": "PrivateIPonVPNInstanceVPC1"
+      }
+    },
+    "PrivateIPonVPNInstanceVPC2": {
+      "Value" : {
+        "Ref": "PrivateIPonVPNInstanceVPC2" 
+      }
+    }
+  }
+}
