@@ -100,6 +100,7 @@
     },
     "PSK": {
       "Description": "Pre Shared Key for VPN connection",
+      "NoEcho": "true",
       "Type": "String",
       "MinLength": "20",
       "Default": "d5g2sI7aSBU6mJtz9qcH",
@@ -693,11 +694,8 @@
             "Outputs.AllocationIdVPNInstanceVPC1"
           ]
         },
-        "NetworkInterfaceId": {
-          "Ref": "ENIVPNInstanceVPC1"
-        },
         "PrivateIpAddress": {
-                    "Ref": "PrivateIPonVPNInstanceVPC1"
+          "Ref": "PrivateIPonVPNInstanceVPC1"
         }
       }
     },
@@ -713,11 +711,8 @@
             "Outputs.AllocationIdVPNInstanceVPC2"
           ]
         },
-        "NetworkInterfaceId": {
-          "Ref": "ENIVPNInstanceVPC2"
-        },
         "PrivateIpAddress": {
-                    "Ref": "PrivateIPonVPNInstanceVPC2"
+          "Ref": "PrivateIPonVPNInstanceVPC2"
         }
       }
     },
@@ -766,7 +761,7 @@
           }
         ],
         "PrivateIpAddress": {
-          "Ref" : "PrivateIPonVPNInstanceVPC1"
+          "Ref": "PrivateIPonVPNInstanceVPC1"
         },
         "SourceDestCheck": "false"
       }
@@ -788,7 +783,7 @@
           }
         ],
         "PrivateIpAddress": {
-            "Ref" : "PrivateIPonVPNInstanceVPC2"
+          "Ref": "PrivateIPonVPNInstanceVPC2"
         },
         "SourceDestCheck": "false"
       }
@@ -796,7 +791,7 @@
     "VPNInstanceVPC1": {
       "DependsOn": [
         "NestedElasticIPsAndSecGroups",
-        "ENIVPNInstanceVPC1", 
+        "ENIVPNInstanceVPC1",
         "AttachGatewayVPC1"
       ],
       "Type": "AWS::EC2::Instance",
@@ -806,7 +801,8 @@
           "configSets": {
             "InstallAndRun": [
               "Install",
-              "Configure"
+              "Configure",
+              "Run"
             ]
           },
           "Install": {
@@ -953,22 +949,6 @@
                   ]
                 }
               }
-            },
-            "services": {
-              "sysvinit": {
-                "ipsec": {
-                  "enabled": "true",
-                  "ensureRunning": "true"
-                },
-                "cfn-hup": {
-                  "enabled": "true",
-                  "ensureRunning": "true",
-                  "files": [
-                    "/etc/cfn/cfn-hup.conf",
-                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
-                  ]
-                }
-              }
             }
           },
           "Configure": {
@@ -998,8 +978,26 @@
                   "Fn::Join": [
                     "",
                     [
-                      "echo 1 >  /proc/sys/net/ipv4/ip_forward && echo 0 >  /proc/sys/net/ipv4/conf/eth0/send_redirects\n"
+                      "echo 1 >  /proc/sys/net/ipv4/ip_forward && echo 0 >  /proc/sys/net/ipv4/conf/all/send_redirects && echo 0 >  /proc/sys/net/ipv4/conf/lo/send_redirects && echo 0 >  /proc/sys/net/ipv4/conf/default/send_redirects && echo 0 >  /proc/sys/net/ipv4/conf/eth0/send_redirects && echo 0 >  /proc/sys/net/ipv4/conf/all/accept_redirects && echo 0 >  /proc/sys/net/ipv4/conf/lo/accept_redirects && echo 0 >  /proc/sys/net/ipv4/conf/default/accept_redirects && echo 0 >  /proc/sys/net/ipv4/conf/eth0/accept_redirects\n"
                     ]
+                  ]
+                }
+              }
+            }
+          },
+          "Run": {
+            "services": {
+              "sysvinit": {
+                "ipsec": {
+                  "enabled": "true",
+                  "ensureRunning": "true"
+                },
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
                   ]
                 }
               }
@@ -1038,7 +1036,6 @@
             },
             "DeviceIndex": "0"
           }
-          
         ],
         "UserData": {
           "Fn::Base64": {
@@ -1077,7 +1074,7 @@
       },
       "CreationPolicy": {
         "ResourceSignal": {
-                "Count": "1",
+          "Count": "1",
           "Timeout": "PT10M"
         }
       }
@@ -1085,7 +1082,7 @@
     "VPNInstanceVPC2": {
       "DependsOn": [
         "NestedElasticIPsAndSecGroups",
-        "ENIVPNInstanceVPC2",        
+        "ENIVPNInstanceVPC2",
         "AttachGatewayVPC1"
       ],
       "Type": "AWS::EC2::Instance",
@@ -1095,7 +1092,8 @@
           "configSets": {
             "InstallAndRun": [
               "Install",
-              "Configure"
+              "Configure",
+              "Run"
             ]
           },
           "Install": {
@@ -1242,22 +1240,6 @@
                   ]
                 }
               }
-            },
-            "services": {
-              "sysvinit": {
-                "ipsec": {
-                  "enabled": "true",
-                  "ensureRunning": "true"
-                },
-                "cfn-hup": {
-                  "enabled": "true",
-                  "ensureRunning": "true",
-                  "files": [
-                    "/etc/cfn/cfn-hup.conf",
-                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
-                  ]
-                }
-              }
             }
           },
           "Configure": {
@@ -1287,8 +1269,26 @@
                   "Fn::Join": [
                     "",
                     [
-                      "echo 1 >  /proc/sys/net/ipv4/ip_forward && echo 0 >  /proc/sys/net/ipv4/conf/eth0/send_redirects\n"
+                      "echo 1 >  /proc/sys/net/ipv4/ip_forward && echo 0 >  /proc/sys/net/ipv4/conf/all/send_redirects && echo 0 >  /proc/sys/net/ipv4/conf/lo/send_redirects && echo 0 >  /proc/sys/net/ipv4/conf/default/send_redirects && echo 0 >  /proc/sys/net/ipv4/conf/eth0/send_redirects && echo 0 >  /proc/sys/net/ipv4/conf/all/accept_redirects && echo 0 >  /proc/sys/net/ipv4/conf/lo/accept_redirects && echo 0 >  /proc/sys/net/ipv4/conf/default/accept_redirects && echo 0 >  /proc/sys/net/ipv4/conf/eth0/accept_redirects\n"
                     ]
+                  ]
+                }
+              }
+            }
+          },
+          "Run": {
+            "services": {
+              "sysvinit": {
+                "ipsec": {
+                  "enabled": "true",
+                  "ensureRunning": "true"
+                },
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
                   ]
                 }
               }
@@ -1326,8 +1326,7 @@
               "Ref": "ENIVPNInstanceVPC2"
             },
             "DeviceIndex": "0"
-        }
-          
+          }
         ],
         "UserData": {
           "Fn::Base64": {
@@ -1366,7 +1365,7 @@
       },
       "CreationPolicy": {
         "ResourceSignal": {
-                "Count": "1",
+          "Count": "1",
           "Timeout": "PT10M"
         }
       }
@@ -1374,6 +1373,103 @@
     "ExtraInstanceVPC1": {
       "DependsOn": "NestedElasticIPsAndSecGroups",
       "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "Comment": "Setup iptables to set-up VPN instance as gateway for its tunneled vpn routes",
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "InstallAndRun": [
+              "Install",
+              "Configure"
+            ]
+          },
+          "Install": {
+            "files": {
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      {
+                        "Ref": "AWS::StackId"
+                      },
+                      "\n",
+                      "region=",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.ExtraInstanceVPC1.Metadata.AWS::CloudFormation::Init\n",
+                      "action=/opt/aws/bin/cfn-init -v ",
+                      "         --stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "         --resource ExtraInstanceVPC1 ",
+                      "         --configsets InstallAndRun ",
+                      "         --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n",
+                      "runas=root\n"
+                    ]
+                  ]
+                }
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          },
+          "Configure": {
+            "commands": {
+              "00_setup_vpn_route": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "/bin/echo ",
+                      {
+                        "Ref": "CIDRVPC2"
+                      },
+                      " via ",
+                      {
+                        "Ref": "PrivateIPonVPNInstanceVPC1"
+                      },
+                      " dev eth0 >> /etc/sysconfig/network-scripts/route-eth0 && service network restart\n"
+                    ]
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "Properties": {
         "ImageId": {
           "Fn::FindInMap": [
@@ -1415,12 +1511,149 @@
               "Ref": "SubnetVPC1"
             }
           }
-        ]
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "yum update -y aws-cfn-bootstrap\n",
+                "/opt/aws/bin/cfn-init -v ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource ExtraInstanceVPC1 ",
+                "         --configsets InstallAndRun ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "/opt/aws/bin/cfn-signal -e $? ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource ExtraInstanceVPC1 ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "1",
+          "Timeout": "PT10M"
+        }
       }
     },
     "ExtraInstanceVPC2": {
       "DependsOn": "NestedElasticIPsAndSecGroups",
       "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "Comment": "Setup iptables to set-up VPN instance as gateway for its tunneled vpn routes",
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "InstallAndRun": [
+              "Install",
+              "Configure"
+            ]
+          },
+          "Install": {
+            "files": {
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      {
+                        "Ref": "AWS::StackId"
+                      },
+                      "\n",
+                      "region=",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.ExtraInstanceVPC2.Metadata.AWS::CloudFormation::Init\n",
+                      "action=/opt/aws/bin/cfn-init -v ",
+                      "         --stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "         --resource ExtraInstanceVPC2 ",
+                      "         --configsets InstallAndRun ",
+                      "         --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n",
+                      "runas=root\n"
+                    ]
+                  ]
+                }
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          },
+          "Configure": {
+            "commands": {
+              "00_setup_vpn_route": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "/bin/echo ",
+                      {
+                        "Ref": "CIDRVPC1"
+                      },
+                      " via ",
+                      {
+                        "Ref": "PrivateIPonVPNInstanceVPC2"
+                      },
+                      " dev eth0 >> /etc/sysconfig/network-scripts/route-eth0 && service network restart\n"
+                    ]
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "Properties": {
         "ImageId": {
           "Fn::FindInMap": [
@@ -1462,7 +1695,47 @@
               "Ref": "SubnetVPC2"
             }
           }
-        ]
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "yum update -y aws-cfn-bootstrap\n",
+                "/opt/aws/bin/cfn-init -v ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource ExtraInstanceVPC2 ",
+                "         --configsets InstallAndRun ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "/opt/aws/bin/cfn-signal -e $? ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource ExtraInstanceVPC2 ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "1",
+          "Timeout": "PT10M"
+        }
       }
     }
   },
@@ -1500,13 +1773,13 @@
       }
     },
     "PrivateIPonVPNInstanceVPC1": {
-      "Value" : {
+      "Value": {
         "Ref": "PrivateIPonVPNInstanceVPC1"
       }
     },
     "PrivateIPonVPNInstanceVPC2": {
-      "Value" : {
-        "Ref": "PrivateIPonVPNInstanceVPC2" 
+      "Value": {
+        "Ref": "PrivateIPonVPNInstanceVPC2"
       }
     }
   }
