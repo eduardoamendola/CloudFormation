@@ -4,6 +4,14 @@ Collection of templates and docs related to Cloud Formation during my studies
 
 ## Notes 
 
+## To-Do
+
+* Learn possible ways to customize the cfn-init in a way that to optimize timeout periods
+* Understand how a custom resouce works if you don't use lambda
+* Understand WaitConditions
+* Understand how the AWS::CloudFormation::Authentication works
+* Learn how cloudformation sets up AutoScaling/LaunchConfiguration to perform migrations with zero downtime
+
 ### Goals
 
 * Be comfortable reading JSON templates
@@ -106,8 +114,45 @@ It has 2 configuration files (stored in /etc/cfn/ when installed through aws-cfn
 * cfn-hup.conf: Contains Stack name and AWS credentials that the cfn-hup daemon targets
 * hooks.conf: Contains the user actions that the cfn-hup daemon calls periodically. The hooks configuration file is loaded at cfn-hup daemon startup only, so new hooks will require the daemon to be restarted. A cache of previous metadata values is stored at /var/lib/cfn-hup/data/metadata_db (not human readable)—you can delete this cache to force cfn-hup to run all post.add actions again.
 
+## Custom Resources
 
+* It's done with the AWS::CloudFormation::CustomResource or Custom::String resource type
+* It requires a service-token property, it can define either a SNS topic or a Lambda function.
+* CloudFormation sends requests to the Custom Resources in a JSON format that requires many fields, like RequestType (create/update/delete), ResponseURL(s3 bucket pre-signed url), StackID, RequestID, resourcetype, ResourceProperties, LogicalResourceId, etc. Here's an example of a Custom Resource Request Object:
 
+<json>
+{
+   "RequestType" : "Create",
+   "ResponseURL" : "http://pre-signed-S3-url-for-response",
+   "StackId" : "arn:aws:cloudformation:us-west-2:EXAMPLE/stack-name/guid",
+   "RequestId" : "unique id for this create request",
+   "ResourceType" : "Custom::TestResource",
+   "LogicalResourceId" : "MyTestResource",
+   "ResourceProperties" : {
+      "Name" : "Value",
+      "List" : [ "1", "2", "3" ]
+   }
+}
+</json>
 
+The custom resource provider processes the AWS CloudFormation request and returns a response of SUCCESS or FAILED to the pre-signed URL.
+
+* The Custom Resource Response Object CAN INCLUDE the output data provided by the resource. Example:
+
+<json>
+{
+   "Status" : "SUCCESS",
+   "PhysicalResourceId" : "TestResource1",
+   "StackId" : "arn:aws:cloudformation:us-west-2:EXAMPLE:stack/stack-name/guid",
+   "RequestId" : "unique id for this create request",
+   "LogicalResourceId" : "MyTestResource",
+   "Data" : {
+      "OutputName1" : "Value1",
+      "OutputName2" : "Value2",
+   }
+}
+</json>
+
+* After getting a response, AWS CloudFormation proceeds with the stack operation according to the response. Any output data from the custom resource is stored in the pre-signed URL location. The template developer can retrieve that data by using the Fn::GetAtt function.
 
 
