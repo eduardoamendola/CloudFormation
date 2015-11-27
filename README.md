@@ -117,9 +117,9 @@ It has 2 configuration files (stored in /etc/cfn/ when installed through aws-cfn
 ## Custom Resources
 
 * It's done with the AWS::CloudFormation::CustomResource or Custom::String resource type
-* It requires a service-token property, it can define either a SNS topic or a Lambda function.
+* It requires a ServiceToken property, it can define either a SNS topic or a Lambda function.
 * CloudFormation sends requests to the Custom Resources in a JSON format that requires many fields, like RequestType (create/update/delete), ResponseURL(s3 bucket pre-signed url), StackID, RequestID, resourcetype, ResourceProperties, LogicalResourceId, etc. Here's an example of a Custom Resource Request Object:
-
+* 
 <json>
 {
    "RequestType" : "Create",
@@ -154,5 +154,15 @@ The custom resource provider processes the AWS CloudFormation request and return
 </json>
 
 * After getting a response, AWS CloudFormation proceeds with the stack operation according to the response. Any output data from the custom resource is stored in the pre-signed URL location. The template developer can retrieve that data by using the Fn::GetAtt function.
+
+### Types of Custom Resource
+
+#### SNS + EC2 instance (aws-cfn-resource-bridge)
+
+* There's a framework called aws-cfn-resource-bridge (https://github.com/aws/aws-cfn-resource-bridge) that makes things easier.
+* Must make sure the instance that runs aws-cfn-resources-bridge framework has internet access in order to be able to send the signals (cfn-signal) to the WaitConditionHandler, as well as executing the cfn-init to run the config inside the Metadata of the template (AWS::CloudFormation::Init).
+* If the script in the sections of cfn-resource-bridge.conf has any sort of errors, it won't work and won't post the message to the SQS queue, the error is going to be "Failed to create resource. Unknown Failure" in the Custom Resource error in the CFN events.
+
+#### Lambda
 
 
