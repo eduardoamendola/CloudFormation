@@ -1,0 +1,596 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Custom Resource via aws-cfn-resource-bridge - Study Task 04",
+  "Parameters": {
+    "KeyName": {
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Default": "LinuxKey",
+      "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+    }
+  },
+  "Resources": {
+    "VPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16"
+      }
+    },
+    "Subnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": "10.0.0.0/24",
+        "MapPublicIpOnLaunch": "true"
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "AttachGateway": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "RouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "Route": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "SubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "Subnet"
+        },
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        }
+      }
+    },
+    "NetworkAcl": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "InboundSSHNetworkAclEntry": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "DependsOn": "NetworkAcl",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        },
+        "RuleNumber": "101",
+        "Protocol": "6",
+        "RuleAction": "allow",
+        "Egress": "false",
+        "CidrBlock": "0.0.0.0/0",
+        "PortRange": {
+          "From": "22",
+          "To": "22"
+        }
+      }
+    },
+    "InboundResponsePortsNetworkAclEntry": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "DependsOn": "NetworkAcl",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        },
+        "RuleNumber": "102",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "Egress": "false",
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+    "OutBoundResponsePortsNetworkAclEntry": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "DependsOn": "NetworkAcl",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        },
+        "RuleNumber": "102",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "Egress": "true",
+        "CidrBlock": "0.0.0.0/0"
+      }
+    },
+    "SubnetNetworkAclAssociation": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "Subnet"
+        },
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
+    "ElasticIP": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "InstanceSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "GroupDescription": "Enable SSH access via port 22",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "InstanceCRAccessRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/"
+      }
+    },
+    "InstanceCRRolePolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "InstanceCRRolePolicies",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "ec2:*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:ReceiveMessage",
+                "sqs:*",
+                "sns:*"
+              ],
+              "Resource": {
+                "Fn::GetAtt": [
+                  "CustomResourceQueue",
+                  "Arn"
+                ]
+              }
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "InstanceCRAccessRole"
+          }
+        ]
+      }
+    },
+    "InstanceCRProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "InstanceCRAccessRole"
+          }
+        ]
+      }
+    },
+    "CustomResourceQueue": {
+      "Properties": {
+        "ReceiveMessageWaitTimeSeconds": "20",
+        "VisibilityTimeout": "30"
+      },
+      "Type": "AWS::SQS::Queue"
+    },
+    "CustomResourceQueuePolicy": {
+      "Properties": {
+        "PolicyDocument": {
+          "Id": {
+            "Fn::Join": [
+              "/",
+              [
+                {
+                  "Fn::GetAtt": [
+                    "CustomResourceQueue",
+                    "Arn"
+                  ]
+                },
+                "CustomResourceQueuePolicy"
+              ]
+            ]
+          },
+          "Statement": [
+            {
+              "Sid": "AllowTopicToPublishMessages",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": "SQS:SendMessage",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "CustomResourceQueue",
+                  "Arn"
+                ]
+              },
+              "Condition": {
+                "ArnEquals": {
+                  "aws:SourceArn": {
+                    "Ref": "CustomResourceTopic"
+                  }
+                }
+              }
+            }
+          ],
+          "Version": "2008-10-17"
+        },
+        "Queues": [
+          {
+            "Ref": "CustomResourceQueue"
+          }
+        ]
+      },
+      "Type": "AWS::SQS::QueuePolicy"
+    },
+    "CustomResourceTopic": {
+      "Properties": {
+        "Subscription": [
+          {
+            "Endpoint": {
+              "Fn::GetAtt": [
+                "CustomResourceQueue",
+                "Arn"
+              ]
+            },
+            "Protocol": "sqs"
+          }
+        ]
+      },
+      "Type": "AWS::SNS::Topic"
+    },
+    "CustomResource": {
+      "Type": "Custom::EipAssociate",
+      "DependsOn": [
+        "InstanceCRProcessor",
+        "InstanceCRWaitCondition"
+      ],
+      "Version": "1.0",
+      "Properties": {
+        "ServiceToken": {
+          "Ref": "CustomResourceTopic"
+        }
+      }
+    },
+    "InstanceCRProcessor": {
+      "Type": "AWS::EC2::Instance",
+      "DependsOn": [
+        "ExtraInstance",
+        "AttachGateway",
+        "InstanceCRProfile",
+        "InstanceCRRolePolicies",
+        "NetworkAcl",
+        "CustomResourceQueuePolicy",
+        "Route",
+        "SubnetNetworkAclAssociation",
+        "SubnetRouteTableAssociation"
+      ],
+      "Metadata": {
+        "Comment": "Instance to process the messages for the Custom Resource",
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "files": {
+              "/etc/cfn/bridge.d/cfn-resource-bridge.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[EipAssociate]\n",
+                      "resource_type=Custom::EipAssociate\n",
+                      "queue_url=",
+                      {
+                        "Ref": "CustomResourceQueue"
+                      },
+                      "\n",
+                      "timeout=600\n",
+                      "create_action=/tmp/create-action.sh\n",
+                      "update_action=/tmp/update-action.sh\n",
+                      "delete_action=/tmp/delete-action.sh\n",
+                      "default_action=/tmp/default-action.sh\n"
+                    ]
+                  ]
+                }
+              },
+              "/tmp/create-action.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -x\n",
+                      "# Script to attach EIP to instance\n",
+                      "exec 3>&1 # \"save\" stdout to fd 3\n",
+                      "exec &>> /tmp/create-resource.log\n",
+                      "apt-get update\n",
+                      "apt-get install awscli -y\n",
+                      "/usr/bin/aws ec2 associate-address --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      " --instance-id ",
+                      {
+                        "Ref": "ExtraInstance"
+                      },
+                      " --allocation-id ",
+                      {
+                        "Fn::GetAtt": [
+                          "ElasticIP",
+                          "AllocationId"
+                        ]
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000777",
+                "owner": "root",
+                "group": "root"
+              },
+              "/tmp/update-action.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -x\n",
+                      "# Script to attach EIP to instance\n",
+                      "exec 3>&1 # \"save\" stdout to fd 3\n",
+                      "exec &>> /tmp/update-resource.log\n",
+                      "echo \"No actions required to update resource\"",
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000777",
+                "owner": "root",
+                "group": "root"
+              },
+              "/tmp/delete-action.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -x\n",
+                      "# Script to attach EIP to instance\n",
+                      "exec 3>&1 # \"save\" stdout to fd 3\n",
+                      "exec &>> /tmp/delete-resource.log\n",
+                      "echo \"No actions required to delete resource\"",
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000777",
+                "owner": "root",
+                "group": "root"
+              },
+              "/tmp/default-action.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -x\n",
+                      "# Script to attach EIP to instance\n",
+                      "exec 3>&1 # \"save\" stdout to fd 3\n",
+                      "exec &>> /tmp/default-resource.log\n",
+                      "echo \"No actions required to default resource\"",
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000777",
+                "owner": "root",
+                "group": "root"
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "ImageId": "ami-8aa67cf9",
+        "IamInstanceProfile": {
+          "Ref": "InstanceCRProfile"
+        },
+        "InstanceType": "t2.micro",
+        "SecurityGroupIds": [
+          {
+            "Ref": "InstanceSecurityGroup"
+          }
+        ],
+        "SubnetId": {
+          "Ref": "Subnet"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -x\n",
+                "exec &> /tmp/userdata.log\n",
+                "# Install aws-cfn-bootstrap in ubuntu\n",
+                "apt-get update\n",
+                "apt-get -y install python-setuptools\n",
+                "mkdir /tmp/aws-cfn-bootstrap-latest\n",
+                "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C /tmp/aws-cfn-bootstrap-latest --strip-components 1\n",
+                "easy_install /tmp/aws-cfn-bootstrap-latest\n",
+                "# Signal 1/3 to the WaitCondition Handler\n",
+                "/usr/local/bin/cfn-signal --exit-code $? ",
+                {
+                  "Fn::Base64": {
+                    "Ref": "InstanceCRWaitHandle"
+                  }
+                },
+                "\n",
+                "# Create configuration files for aws-cfn-resource-bridge\n",
+                "/usr/local/bin/cfn-init --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " --resource InstanceCRProcessor",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "# Signal 2/3 to the WaitCondition Handler\n",
+                "/usr/local/bin/cfn-signal --exit-code $? ",
+                {
+                  "Fn::Base64": {
+                    "Ref": "InstanceCRWaitHandle"
+                  }
+                },
+                "\n",
+                "# Install and Run the aws-cfn-resource-bridge framework to respond to the Custom Resource that will be created on the stack \n",
+                "apt-get install python-argparse python-botocore python-daemon -y\n",
+                "mkdir /tmp/aws-cfn-resource-bridge\n",
+                "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-resource-bridge-0.1-4.tar.gz | tar xz -C /tmp/aws-cfn-resource-bridge --strip-components 1\n",
+                "cd /tmp/aws-cfn-resource-bridge\n",
+                "python setup.py install\n",
+                "/usr/local/bin/cfn-resource-bridge -c /etc/cfn/bridge.d/ -v\n",
+                "# All done, Signal 3/3 to the WaitCondition Handler\n",
+                "/usr/local/bin/cfn-signal --exit-code $? ",
+                {
+                  "Fn::Base64": {
+                    "Ref": "InstanceCRWaitHandle"
+                  }
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "InstanceCRWaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "InstanceCRWaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "InstanceCRProcessor",
+      "Properties": {
+        "Count": "1",
+        "Handle": {
+          "Ref": "InstanceCRWaitHandle"
+        },
+        "Timeout": "300"
+      }
+    },
+    "ExtraInstance": {
+      "Type": "AWS::EC2::Instance",
+      "DependsOn": "AttachGateway",
+      "Metadata": {
+        "Comment": "Instance that will have the EIP assigned by the Custom Resources in InstanceCRProcessor"
+      },
+      "Properties": {
+        "ImageId": "ami-8aa67cf9",
+        "SecurityGroupIds": [
+          {
+            "Ref": "InstanceSecurityGroup"
+          }
+        ],
+        "SubnetId": {
+          "Ref": "Subnet"
+        },
+        "InstanceType": "t2.micro",
+        "KeyName": {
+          "Ref": "KeyName"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ElasticIP": {
+      "Value": {
+        "Ref": "ElasticIP"
+      },
+      "Description": "Elastic IP that was attached to ExtraInstance via CR running in InstanceCRProcessor"
+    },
+    "InstanceCRProcessor": {
+      "Value": {
+        "Fn::GetAtt": [
+          "InstanceCRProcessor",
+          "PublicIp"
+        ]
+      },
+      "Description": "Public IP of the instance"
+    },
+    "ExtraInstance": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ExtraInstance",
+          "PublicIp"
+        ]
+      },
+      "Description": "Public IP of the instance"
+    },
+    "ServiceToken": {
+      "Value": {
+        "Ref": "CustomResourceTopic"
+      },
+      "Description": "Service token to use in CustomResource definitions"
+    }
+  }
+}
