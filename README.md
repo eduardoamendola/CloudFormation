@@ -47,7 +47,7 @@ $ cfn-get-metadata --access-key XXXX --secret-key XXXX --stack ec2-bootstrapped-
 
 * It's not possible to migrate resources into CFN that were already manually created outside of CFN without tearing it all down and rebuilding it from CFN. One option would be to use CloudFormer to create a template, and then edit it and schedulle a maintenance window to migrate them little by little, preferably by truncating the template into several nested ones as well.
 
-* [FIXED ALREADY] There is currently no official way in CFN to specify the permissions needed for an SNS topic to trigger the Lambda function. It has to be done through a Custom Resource (Example can be found on StudyTask 08). Note: A new resource type AWS::Lambda::Permission was announced in October to fix this. I tested and added an example of its use in Study task 08.
+* [FIXED ALREADY] There is currently no official way in CFN to specify the permissions needed for an SNS topic to trigger the Lambda function. It has to be done through a Custom Resource (Example can be found on StudyTask 08). Note: A new resource type AWS::Lambda::Permission was announced in October/2015 to fix this. I tested and added an example of its use in Study task 08.
 
 ### Tips and A-HA moments
 
@@ -114,8 +114,30 @@ It has 2 configuration files (stored in /etc/cfn/ when installed through aws-cfn
 * cfn-hup.conf: Contains Stack name and AWS credentials that the cfn-hup daemon targets
 * hooks.conf: Contains the user actions that the cfn-hup daemon calls periodically. The hooks configuration file is loaded at cfn-hup daemon startup only, so new hooks will require the daemon to be restarted. A cache of previous metadata values is stored at /var/lib/cfn-hup/data/metadata_db (not human readable)—you can delete this cache to force cfn-hup to run all post.add actions again.
 
+### CFN-Get-Metadata
+
+A way to retrieve the metadata from a resource inside a stack, to be used by the cfn-get-metadata helper script on the instances. It can be useful to set-up the userdata of an instance.
+
+It retrieves the values in a Json (unlike aws cloudformation cli commands). Example:
+
+$ cfn-get-metadata --access-key XXXX --secret-key XXXX --stack ec2-bootstrapped-webserver --resource WebServerSecurityGroup --region eu-west-1
+{
+    "Object1": "whatever1",
+    "Object2": "whatever2"
+}
+
+If using the -f to pass the credential-file parameter, it must have the following format (that's different than the typical cli credential file in ~/.aws/credentials):
+
+AWSAccessKeyId=XXXXXXXX
+AWSSecretKey=XXXXXXXX
+
+### CFN-Signal
+
+A way to send signals to a resource in the stack (like a WaitConditionHandler, as part of a WaitCondition resource). It's used with the command cfn-signal and it can send customized error messages to stack too (-r or --reason attributes).
+
 ## Custom Resources
 
+* It's essentialy an SNS topic that's subscribed as a token.
 * It's done with the AWS::CloudFormation::CustomResource or Custom::String resource type
 * It requires a ServiceToken property, it can define either a SNS topic or a Lambda function.
 * CloudFormation sends requests to the Custom Resources in a JSON format that requires many fields, like RequestType (create/update/delete), ResponseURL(s3 bucket pre-signed url), StackID, RequestID, resourcetype, ResourceProperties, LogicalResourceId, etc. Here's an example of a Custom Resource Request Object:
