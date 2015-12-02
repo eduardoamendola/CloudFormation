@@ -1,0 +1,122 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "CFN stack that creates ASG, LaunchConfiguration, and an UpdatePolicy for AutoScaling rollout",
+  "Parameters": {
+    "AMI": {
+      "Description": "AMI ID that is going to be used by the ASG",
+      "Type": "String",
+      "Default": "ami-e4d18e93",
+      "MinLength": "10",
+      "MaxLength": "15"
+    },
+    "InstanceType": {
+      "Description": "Instance Type that is going to be set-up for the instances in ASG",
+      "Type": "String",
+      "Default": "t2.micro"
+    },
+    "KeyName": {
+      "Description": "Name of Key Pair that is going to be used by the instances launched in ASG",
+      "Type": "String",
+      "Default": "LinuxKey"
+    }
+  },
+  "Resources": {
+    "InstanceSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable SSH access via port 22",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "CustomLaunchConfiguration": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "ImageId": {
+          "Ref": "AMI"
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "InstanceSecurityGroup"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "yum update aws-cfn-bootstrap -y\n",
+                "/opt/aws/bin/cfn-signal -e 0 --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " --resource CustomASG ",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "CustomASG": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "AvailabilityZones": {
+          "Fn::GetAZs": ""
+        },
+        "LaunchConfigurationName": {
+          "Ref": "CustomLaunchConfiguration"
+        },
+        "MinSize": "4",
+        "MaxSize": "10",
+        "DesiredCapacity": "7"
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "7",
+          "Timeout": "PT30M"
+        }
+      },
+      "UpdatePolicy": {
+        "AutoScalingScheduledAction": {
+          "IgnoreUnmodifiedGroupSizeProperties": "true"
+        },
+        "AutoScalingRollingUpdate": {
+          "MinInstancesInService": "2",
+          "MaxBatchSize": "3",
+          "PauseTime": "PT3M",
+          "WaitOnResourceSignals": "true"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "AutoScalingGroup": {
+      "Value": {
+        "Ref": "CustomASG"
+      }
+    },
+    "LaunchConfiguration": {
+      "Value": {
+        "Ref": "CustomLaunchConfiguration"
+      }
+    }
+  }
+}
