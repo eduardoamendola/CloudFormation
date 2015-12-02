@@ -8,6 +8,3 @@
 6. The stack should successfully complete 
 
 *  Please try to avoid copying and pasting for this exercise 
-
-[ All done, just have to understand why the waitcondition doesn't work if it I set it up to 3 instead of 1 in the count ]
-
