@@ -8,7 +8,6 @@ Collection of templates and docs related to Cloud Formation during my studies
 
 * Learn possible ways to customize the cfn-init in a way that to optimize timeout periods
 * Understand how the AWS::CloudFormation::Authentication works
-* Learn how cloudformation sets up AutoScaling/LaunchConfiguration to perform migrations with zero downtime
 
 ### Goals
 
@@ -21,6 +20,7 @@ Collection of templates and docs related to Cloud Formation during my studies
 * Be able to explain the following: WaitConditions, Ref calls, Parameters, Mappings 
 * Understand the relationship between CFN calls and the HTTPS APIs for the various services. 
 * Understand how to use custom resources (Lambda functions, SNS topics, etc)
+* Learn how cloudformation sets up AutoScaling/LaunchConfiguration to perform migrations with zero downtime
 
 ### Features
 
