@@ -7,10 +7,10 @@ Collection of templates and docs related to Cloud Formation during my studies
 ## To-Do
 
 * Learn possible ways to customize the cfn-init in a way that to optimize timeout periods
-* Understand how the AWS::CloudFormation::Authentication works
 
 ### Goals
 
+* Understand how the AWS::CloudFormation::Authentication works
 * Be comfortable reading JSON templates
 * Be able to easily search for AWS resources of any type
 * Understand how a custom resouce works if you don't use lambda
