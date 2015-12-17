@@ -137,9 +137,8 @@ A way to send signals to a resource in the stack (like a WaitConditionHandler, a
 
 ## Custom Resources
 
-* It's essentialy an SNS topic that's subscribed as a token.
 * It's done with the AWS::CloudFormation::CustomResource or Custom::String resource type
-* It requires a ServiceToken property, it can define either a SNS topic or a Lambda function.
+* It requires a ServiceToken property inside the CFN resource in template, it can define either a SNS topic or a Lambda function.
 * CloudFormation sends requests to the Custom Resources in a JSON format that requires many fields, like RequestType (create/update/delete), ResponseURL(s3 bucket pre-signed url), StackID, RequestID, resourcetype, ResourceProperties, LogicalResourceId, etc. Here's an example of a Custom Resource Request Object:
 * 
 <json>
