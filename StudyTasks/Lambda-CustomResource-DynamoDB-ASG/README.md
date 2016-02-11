@@ -1,4 +1,4 @@
-## Lambda Function that updates a database whenever a ASG has instances added/removed
+## Lambda Function that updates a database whenever an ASG has instances added/removed
 
 1. Create a CFN template that creates a ASG, a LaunchConfiguration and a SNS Topic
 2. Change the template in order to make the ASG to subscribe to the SNS topic and send notifications in case any of the instances get added/removed from the ASG for any reason (either failure or termination).
