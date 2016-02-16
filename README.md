@@ -180,10 +180,33 @@ The custom resource provider processes the AWS CloudFormation request and return
 
 #### SNS + EC2 instance (aws-cfn-resource-bridge)
 
-* There's a framework called aws-cfn-resource-bridge (https://github.com/aws/aws-cfn-resource-bridge) that makes things easier.
-* Must make sure the instance that runs aws-cfn-resources-bridge framework has internet access in order to be able to send the signals (cfn-signal) to the WaitConditionHandler, as well as executing the cfn-init to run the config inside the Metadata of the template (AWS::CloudFormation::Init).
+* It's sent to an SNS that must be subscribed to an SQS queue. This SQS queue must contain a role that contains a policy allowing the action "SQS:SendMessage" to the ARN of the queue from the "aws:SourceArn" of the SNS topic.
+* That being done, the custom resource must run in an EC2 instance. There's a framework called aws-cfn-resource-bridge (https://github.com/aws/aws-cfn-resource-bridge) that makes things easier.
+* Must make sure the instance that runs aws-cfn-resources-bridge framework has internet access in order to be able to access the CloudFormation endpoints via HTTPS and to send the signals (cfn-signal) to the WaitConditionHandler, as well as executing the cfn-init to run the config inside the Metadata of the template (AWS::CloudFormation::Init).
+* The instance must contain a IamInstanceProfile property with a "AWS::IAM::InstanceProfile" that contains a Role which is going to be a "sts:AssumeRole" that contains policies allowing sqs:* (or at least to "sqs:ChangeMessageVisibility", "sqs:DeleteMessage" and "sqs:ReceiveMessage"). It should also contain the actions allowing other possible API calls that are going to be used by the Custom Resource.
 * If the script in the sections of cfn-resource-bridge.conf has any sort of errors, it won't work and won't post the message to the SQS queue, the error is going to be "Failed to create resource. Unknown Failure" in the Custom Resource error in the CFN events.
 
+Here is the full work flow:
+
+Part 1: SNS ==> Subscribes to an SQS queue.
+Part 2: EC2 Instance checked the SQS queue with the aws-cfn-resource-bridge framework and act accordingly to the JSON definition there. Once it's done, it sends answer to the SQS queue, via HTTPS to the SQS regional endpoint.
+Part 3: CloudFormation will receive the response via SNS topic, since it is subscribed to the SQS queue.
+
 #### Lambda
+
+* AWS CloudFormation calls a Lambda API to invoke the function ("Action": ["lambda:InvokeFunction"]) and passes all the request data to the function, such as the request type and resource properties. 
+* Lambda function must contain an execution role ("AWS::IAM::Role") that contains a ["sts:AssumeRole"] as an action to the "lambda.amazonaws.com" service. Aditionally: 
+- It must also contains the policies allowing the actions "logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents" to "arn:aws:logs:*:*:*"
+- Must contain allowed action "cloudformation:DescribeStacks" to "*"
+* The response from Lambda to CloudFormation must be sent to the "event.ResponseURL", which is sent within the Custom Resource sent from CloudFormation to Lambda. It is a pre-signed S3 URL.
+* Ideally, it must also implement a response for a stack deletion as well (event.RequestType == "Delete"), sending a response to the responseURL with a STATUS of "SUCCESS" too, otherwise the custom resource will timeout and fail during stack deletion.
+
+Here is the full work flow:
+
+CFN Stack ==> (API call to lambda::InvokeFunction) ==> Lambda function with an execution role with the right permissions (logs:* and cloudformation:DescribeStacks).
+
+Lambda function ==> API call to ResponseURL (pre-signed S3 bucket) (can contain a "Data")
+
+
 
 
