@@ -143,9 +143,9 @@ A way to send signals to a resource in the stack (like a WaitConditionHandler, a
 * 
 <json>
 {
-   "RequestType" : "Create",
-   "ResponseURL" : "http://pre-signed-S3-url-for-response",
-   "StackId" : "arn:aws:cloudformation:us-west-2:EXAMPLE/stack-name/guid",
+   "RequestType" : "Create",    <=== automatically filled
+   "ResponseURL" : "http://pre-signed-S3-url-for-response",   <=== automatically filled
+   "StackId" : "arn:aws:cloudformation:us-west-2:EXAMPLE/stack-name/guid",   <=== automatically filled
    "RequestId" : "unique id for this create request",
    "ResourceType" : "Custom::TestResource",
    "LogicalResourceId" : "MyTestResource",
@@ -189,8 +189,7 @@ The custom resource provider processes the AWS CloudFormation request and return
 Here is the full work flow:
 
 Part 1: SNS ==> Subscribes to an SQS queue.
-Part 2: EC2 Instance checked the SQS queue with the aws-cfn-resource-bridge framework and act accordingly to the JSON definition there. Once it's done, it sends answer to the SQS queue, via HTTPS to the SQS regional endpoint.
-Part 3: CloudFormation will receive the response via SNS topic, since it is subscribed to the SQS queue.
+Part 2: EC2 Instance checks the SQS queue with the aws-cfn-resource-bridge framework and act accordingly to the JSON definition there. 
 
 #### Lambda
 
