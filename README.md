@@ -28,18 +28,20 @@ Collection of templates and docs related to Cloud Formation during my studies
 * Template-based
 * Only "Resources" is mandatory in template
 * A few resourcers can't be created through CFN, such as KeyPairs, R53 HostedZones, etc
-* Every resource can contain a Metadata, which basically appends a JSON-structured value to such resource. You can retrieve resource metadata from the CFN stacks in two ways:
+* Every resource can contain a Metadata, which basically appends a JSON-structured value to such resource. You can retrieve resource metadata from the CFN stacks in 2 ways:
 
-- AWS CLI. Example: 
+1. AWS CLI. Example: 
 
-```$ aws cloudformation describe-stack-resource --stack-name ec2-bootstrapped-webserver --logical-resource-id WebServerSecurityGroup
+```bash
+$ aws cloudformation describe-stack-resource --stack-name ec2-bootstrapped-webserver --logical-resource-id WebServerSecurityGroup
 
 STACKRESOURCEDETAIL	2015-11-05T18:02:20.381Z	WebServerSecurityGroup	{"Object1":"whatever1","Object2":"whatever2"}	ec2-bootstrapped-webserver-WebServerSecurityGroup-1L8GBCZDGRR7G	UPDATE_COMPLETE	AWS::EC2::SecurityGroup	arn:aws:cloudformation:eu-west-1:429230952994:stack/ec2-bootstrapped-webserver/0a3ff450-83de-11e5-8605-50a68645b2d2	ec2-bootstrapped-webserver
 ```
 
-- cfn-get-metadata helper script (it must be installed via aws-cfn-bootstrap package for linux/windows. Although it's installed by defaul in Amazon Linux). Example:
+2. cfn-get-metadata helper script (it must be installed via aws-cfn-bootstrap package for linux/windows. Although it's installed by defaul in Amazon Linux). Example:
 
-```$ cfn-get-metadata --access-key XXXX --secret-key XXXX --stack ec2-bootstrapped-webserver --resource WebServerSecurityGroup --region eu-west-1
+```bash
+$ cfn-get-metadata --access-key XXXX --secret-key XXXX --stack ec2-bootstrapped-webserver --resource WebServerSecurityGroup --region eu-west-1
 {
     "Object1": "whatever1",
     "Object2": "whatever2"
@@ -64,7 +66,8 @@ STACKRESOURCEDETAIL	2015-11-05T18:02:20.381Z	WebServerSecurityGroup	{"Object1":"
 
 Returns a 200 response code (HTTP OK), which will also contain some data, such as the RequestID of the stack creation, as well as the ARN of the new stack that's being created. Example captured with --debug argument of the aws CLI command:
 
-```$ aws cloudformation create-stack --stack-name ec2-bootstrapped-webserver --template-body file://~/Git/CloudFormation/StudyTasks/cfn-init/ec2-amazon-linux-apache-php.cform --parameters ParameterKey=KeyName,ParameterValue=AmazonLinuxIreland ParameterKey=InstanceType,ParameterValue=t1.micro --debug
+```bash
+$ aws cloudformation create-stack --stack-name ec2-bootstrapped-webserver --template-body file://~/Git/CloudFormation/StudyTasks/cfn-init/ec2-amazon-linux-apache-php.cform --parameters ParameterKey=KeyName,ParameterValue=AmazonLinuxIreland ParameterKey=InstanceType,ParameterValue=t1.micro --debug
 
 ...
 
@@ -106,15 +109,16 @@ AWS CloudFormation includes a set of helper scripts (cfn-init, cfn-signal, cfn-g
 
 The required parameters are "Region", "Stack" and "Resource". Ex:
 
-```/usr/local/bin/cfn-init --stack cfn-bridge 
-                           --resource InstanceCRProcessor 
-                           --region eu-west-1
+```bash
+/usr/local/bin/cfn-init --stack cfn-bridge 
+                        --resource InstanceCRProcessor 
+                        --region eu-west-1
 ```
 
 Command workflow:
 
-1 - It connects to the CloudFormation regional endpoint through https and reads the template from that stack, going through the metadata (AWS::CloudFormation::Init key) of the specified Resource.
-2 - Runs the ConfigSets from the C (checks for "config" key if not specified)
+1. It connects to the CloudFormation regional endpoint through https and reads the template from that stack, going through the metadata (AWS::CloudFormation::Init key) of the specified Resource.
+2. Runs the ConfigSets from the C (checks for "config" key if not specified)
 
 ### CFN-Hup
 
@@ -122,18 +126,17 @@ The cfn-hup helper is a daemon that detects changes in resource metadata and run
 
 It has 2 configuration files (stored in /etc/cfn/ when installed through aws-cfn-bootstrap package for linux. Although it's installed by default in Amazon Linux):
 
-* cfn-hup.conf: Contains Stack name and AWS credentials that the cfn-hup daemon targets. Ex:
+* cfn-hup.conf: Contains Stack name and AWS credentials that the cfn-hup daemon targets. Example of /etc/cfn/cfn-hup.conf:
 
-```$ cat /etc/cfn/cfn-hup.conf
+```Ini
 [main]
 stack=arn:aws:cloudformation:eu-west-1:123123123123:stack/openvpn/bdffdf60-df18-11e5-ae2e-50faeb5524d2
 region=eu-west-1
 ```
 
-* hooks.conf: Contains the user actions that the cfn-hup daemon calls periodically. The hooks configuration file is loaded at cfn-hup daemon startup only, so new hooks will require the daemon to be restarted. A cache of previous metadata values is stored at /var/lib/cfn-hup/data/metadata_db (not human readable)—you can delete this cache to force cfn-hup to run all post.add actions again. Ex: 
+* hooks.conf: Contains the user actions that the cfn-hup daemon calls periodically. The hooks configuration file is loaded at cfn-hup daemon startup only, so new hooks will require the daemon to be restarted. A cache of previous metadata values is stored at /var/lib/cfn-hup/data/metadata_db (not human readable)—you can delete this cache to force cfn-hup to run all post.add actions again. Example of /etc/cfn/hooks.d/cfn-auto-reloader.conf: 
 
-```$ cat /etc/cfn/hooks.d/cfn-auto-reloader.conf
-Ini
+```Ini
 [cfn-auto-reloader-hook]
 triggers=post.update
 path=Resources.VPNInstanceVPC1.Metadata.AWS::CloudFormation::Init
