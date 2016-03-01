@@ -144,16 +144,23 @@ action=/opt/aws/bin/cfn-init -v          --stack openvpn         --resource VPNI
 runas=root
 ```
 
+Daemon workflow:
+
+1. Once started, the daemon checks /etc/cfn/cfn-hup.conf for stacks to check.
+2. Daemon connects to the regional CloudFormation endpoint via HTTPS to retrieve the meta-data from those stacks.
+3. If the HTTP header from response has a different 'x-amzn-requestid', daemon checks hooks in /etc/cfn/hooks.d/ for triggers related to the new stack state. If yes, the "action" is executed. Normally it's good practice to add the cfn-init to run here, just like it's set-up in user-data.
+4. cfn-hup does NOT send a response to CFN whatsoever, so if something fails in the action, CloudFormation is not notified.
+
 ### CFN-Get-Metadata
 
 A way to retrieve the metadata from a resource inside a stack, to be used by the cfn-get-metadata helper script on the instances. It can be useful to set-up the userdata of an instance.
 
 * It retrieves the values in a Json (unlike aws cloudformation cli commands). Requires:
 
-- Credentials (Access Key and Secret Key)
-- Region
-- Stack
-- Resource
+    - Credentials (Access Key and Secret Key)
+    - Region
+    - Stack
+    - Resource
 
 Example:
 
@@ -183,9 +190,9 @@ A way to send signals to a resource in the stack (like a WaitConditionHandler, a
 
 Requires:
 
-- Region
-- Stack
-- Resource
+* Region
+* Stack
+* Resource
 
 Example: 
 
@@ -271,8 +278,8 @@ Here is the full work flow:
 
 * AWS CloudFormation calls a Lambda API to invoke the function ("Action": ["lambda:InvokeFunction"]) and passes all the request data to the function, such as the request type and resource properties. 
 * Lambda function must contain an execution role ("AWS::IAM::Role") that contains a ["sts:AssumeRole"] as an action to the "lambda.amazonaws.com" service. Aditionally: 
-- It must also contains the policies allowing the actions "logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents" to "arn:aws:logs:*:*:*"
-- Must contain allowed action "cloudformation:DescribeStacks" to "*"
+    - It must also contains the policies allowing the actions "logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents" to "arn:aws:logs:*:*:*"
+    - Must contain allowed action "cloudformation:DescribeStacks" to "*"
 * The response from Lambda to CloudFormation must be sent to the "event.ResponseURL", which is sent within the Custom Resource sent from CloudFormation to Lambda. It is a pre-signed S3 URL.
 * Ideally, it must also implement a response for a stack deletion as well (event.RequestType == "Delete"), sending a response to the responseURL with a STATUS of "SUCCESS" too, otherwise the custom resource will timeout and fail during stack deletion.
 
