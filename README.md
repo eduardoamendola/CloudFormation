@@ -33,15 +33,24 @@ Collection of templates and docs related to Cloud Formation during my studies
 1. AWS CLI. Example: 
 
 ```bash
-$ aws cloudformation describe-stack-resource --stack-name ec2-bootstrapped-webserver --logical-resource-id WebServerSecurityGroup
+$ aws cloudformation describe-stack-resource --stack-name ec2-bootstrapped-webserver 
+                                             --logical-resource-id WebServerSecurityGroup
 
-STACKRESOURCEDETAIL	2015-11-05T18:02:20.381Z	WebServerSecurityGroup	{"Object1":"whatever1","Object2":"whatever2"}	ec2-bootstrapped-webserver-WebServerSecurityGroup-1L8GBCZDGRR7G	UPDATE_COMPLETE	AWS::EC2::SecurityGroup	arn:aws:cloudformation:eu-west-1:429230952994:stack/ec2-bootstrapped-webserver/0a3ff450-83de-11e5-8605-50a68645b2d2	ec2-bootstrapped-webserver
+STACKRESOURCEDETAIL	2015-11-05T18:02:20.381Z	WebServerSecurityGroup	
+{"Object1":"whatever1","Object2":"whatever2"}	
+ec2-bootstrapped-webserver-WebServerSecurityGroup-1L8GBCZDGRR7G	
+UPDATE_COMPLETE	AWS::EC2::SecurityGroup	
+arn:aws:cloudformation:eu-west-1:429230952994:stack/ec2-bootstrapped-webserver/0a3ff450-83de-11e5-8605-50a68645b2d2	
+ec2-bootstrapped-webserver
 ```
 
 2. cfn-get-metadata helper script (it must be installed via aws-cfn-bootstrap package for linux/windows. Although it's installed by defaul in Amazon Linux). Example:
 
 ```bash
-$ cfn-get-metadata --access-key XXXX --secret-key XXXX --stack ec2-bootstrapped-webserver --resource WebServerSecurityGroup --region eu-west-1
+$ cfn-get-metadata --access-key XXXX --secret-key XXXX 
+                   --stack ec2-bootstrapped-webserver 
+                   --resource WebServerSecurityGroup 
+                   --region eu-west-1
 {
     "Object1": "whatever1",
     "Object2": "whatever2"
@@ -67,7 +76,11 @@ $ cfn-get-metadata --access-key XXXX --secret-key XXXX --stack ec2-bootstrapped-
 Returns a 200 response code (HTTP OK), which will also contain some data, such as the RequestID of the stack creation, as well as the ARN of the new stack that's being created. Example captured with --debug argument of the aws CLI command:
 
 ```bash
-$ aws cloudformation create-stack --stack-name ec2-bootstrapped-webserver --template-body file://~/Git/CloudFormation/StudyTasks/cfn-init/ec2-amazon-linux-apache-php.cform --parameters ParameterKey=KeyName,ParameterValue=AmazonLinuxIreland ParameterKey=InstanceType,ParameterValue=t1.micro --debug
+$ aws cloudformation create-stack 
+      --stack-name ec2-bootstrapped-webserver 
+      --template-body file://~/Git/CloudFormation/StudyTasks/cfn-init/ec2-amazon-linux-apache-php.cform 
+      --parameters ParameterKey=KeyName,ParameterValue=AmazonLinuxIreland ParameterKey=InstanceType,ParameterValue=t1.micro 
+      --debug
 
 ...
 
@@ -141,7 +154,7 @@ region=eu-west-1
 [cfn-auto-reloader-hook]
 triggers=post.update
 path=Resources.VPNInstanceVPC1.Metadata.AWS::CloudFormation::Init
-action=/opt/aws/bin/cfn-init -v          --stack openvpn         --resource VPNInstanceVPC1          --configsets InstallAndRun          --region eu-west-1
+action=/opt/aws/bin/cfn-init --stack openvpn --resource VPNInstanceVPC1 --configsets InstallAndRun --region eu-west-1
 runas=root
 ```
 
@@ -166,7 +179,10 @@ A way to retrieve the metadata from a resource inside a stack, to be used by the
 Example:
 
 ```bash
-$ cfn-get-metadata --access-key XXXX --secret-key XXXX --stack ec2-bootstrapped-webserver --resource WebServerSecurityGroup --region eu-west-1
+$ cfn-get-metadata --access-key XXXX --secret-key XXXX 
+                   --stack ec2-bootstrapped-webserver 
+                   --resource WebServerSecurityGroup 
+                   --region eu-west-1
 {
     "Object1": "whatever1",
     "Object2": "whatever2"
