@@ -119,6 +119,7 @@ Command workflow:
 
 1. It connects to the CloudFormation regional endpoint through https and reads the template from that stack, going through the metadata (AWS::CloudFormation::Init key) of the specified Resource.
 2. Runs the ConfigSets from the C (checks for "config" key if not specified)
+3. Once the ConfigSets are executed, cfn-init sends a "SignalResource" to CloudFormation to notify if specified resource was created/updated/deleted with either a success or failure status. Behind the curtains, this is done through an S3 signed-url via a regional s3 bucket. Additionally, signal contains the UniqueId, which is the instance id.
 
 ### CFN-Hup
 
@@ -149,7 +150,7 @@ Daemon workflow:
 1. Once started, the daemon checks /etc/cfn/cfn-hup.conf for stacks to check.
 2. Daemon connects to the regional CloudFormation endpoint via HTTPS to retrieve the meta-data from those stacks.
 3. If the HTTP header from response has a different 'x-amzn-requestid', daemon checks hooks in /etc/cfn/hooks.d/ for triggers related to the new stack state. If yes, the "action" is executed. Normally it's good practice to add the cfn-init to run here, just like it's set-up in user-data.
-4. cfn-hup does NOT send a response to CFN whatsoever, so if something fails in the action, CloudFormation is not notified.
+4. Once the action is executed, cfn-hup sends a "SignalResource" to CloudFormation to notify if specified resource was created/updated/deleted with either a success or failure status. Behind the curtains, this is done through an S3 signed-url via a regional s3 bucket. Additionally, signal contains the UniqueId, which is the instance id.
 
 ### CFN-Get-Metadata
 
