@@ -305,3 +305,28 @@ Here is the full work flow:
 CFN Stack ==> (API call to lambda::InvokeFunction) ==> Lambda function with an execution role with the right permissions (logs:* and cloudformation:DescribeStacks).
 
 Lambda function ==> API call (PUT via HTTPS) to ResponseURL (pre-signed S3 bucket) (can contain a "Data")
+
+## ASG rollout update (IN PROGRESS)
+
+* It's done through the UpdatePolicy
+
+Once initiated, it adds an event to CFN with something like the following:
+
+'''
+Rolling update initiated. Terminating N obsolete instance(s) in batches of N, while keeping at least N instance(s) in service. Waiting on resource signals with a timeout of PTXXXM when new instances are added to the autoscaling group.
+'''
+
+* PauseTime: If you specify the WaitOnResourceSignals property, the PauseTime becomes the amount of time to wait until the ASG receives the required number of signals. It's recommended to enter a value that is enough time for the instances to run their UserData scripts in time.
+
+If WaitOnResourceSignals+PauseTime is specified, you gotta make sure you have added enough time to the pausetime to be able to receive the amount of signals. Otherwise, CloudFormation is going to rollback, with the error "Failed to receive X resource signal(s) within the specified duration". However, during rollback process, if you only made "replacement" kind of updates in your LC, it's going to go through the rollback process by respecting the updatepolicy too, so it will fail again which will result in UPDATE_ROLLBACK_FAILURE.
+
+If you use the "Continue Rollback Update" option, enough time after the amount of time you think your instances would be able to finish what they are doing and send the signal to CFN, than it should work just fine (and initate the ROLLBACK_COMPLETE_CLEANUP process, which would remove the unused resources).
+
+How can you make the update with zero downtime?
+
+Adding the ELB to the ASG, and setting HealthCheckType and HealthCheckGracePeriod to your ASG. 
+
+Note from ASG docs: If you have attached a load balancer to your Auto Scaling group, you can optionally have Auto Scaling include the results of Elastic Load Balancing health checks when determining the health status of an instance. After you add ELB health checks, Auto Scaling also marks an instance as unhealthy if Elastic Load Balancing reports the instance state as OutOfService. 
+
+
+
