@@ -312,9 +312,9 @@ Lambda function ==> API call (PUT via HTTPS) to ResponseURL (pre-signed S3 bucke
 
 Once initiated, it adds an event to CFN with something like the following:
 
-'''
+```
 Rolling update initiated. Terminating N obsolete instance(s) in batches of N, while keeping at least N instance(s) in service. Waiting on resource signals with a timeout of PTXXXM when new instances are added to the autoscaling group.
-'''
+```
 
 * PauseTime: If you specify the WaitOnResourceSignals property, the PauseTime becomes the amount of time to wait until the ASG receives the required number of signals. It's recommended to enter a value that is enough time for the instances to run their UserData scripts in time.
 
