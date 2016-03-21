@@ -326,9 +326,12 @@ If you use the "Continue Rollback Update" option, enough time after the amount o
 
 How can you make the update with zero downtime?
 
+First, you must make sure the ASG is running behind an ELB already, so they can have an endpoint set-up in their DNS to make the ELB to load the balance among the ASG instances already.
+
+If not, the ELB name(s) must be added to the ASG property "LoadBalancerNames", PLUS the HealthCheckType (ELB instead of EC2) and HealthCheckGracePeriod must be set.
+
 Adding the ELB to the ASG, and setting HealthCheckType and HealthCheckGracePeriod to your ASG. 
 
 Note from ASG docs: If you have attached a load balancer to your Auto Scaling group, you can optionally have Auto Scaling include the results of Elastic Load Balancing health checks when determining the health status of an instance. After you add ELB health checks, Auto Scaling also marks an instance as unhealthy if Elastic Load Balancing reports the instance state as OutOfService. 
-
 
 
