@@ -272,7 +272,13 @@
     "CustomASG": {
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "Properties": {
-        "HealthCheckType": "EC2",
+        "HealthCheckType": "ELB",
+        "HealthCheckGracePeriod": "30",
+        "LoadBalancerNames": [
+          {
+            "Ref": "ElasticLoadBalancer"
+          }
+        ],
         "AvailabilityZones": {
           "Fn::GetAZs": ""
         },
@@ -300,6 +306,30 @@
           "WaitOnResourceSignals": "true"
         }
       }
+    },
+    "ElasticLoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "Subnets": [
+          "subnet-7b52e21e",
+          "subnet-b78a77ee",
+          "subnet-a416cfd3"
+        ],
+        "Listeners": [
+          {
+            "LoadBalancerPort": "80",
+            "InstancePort": "80",
+            "Protocol": "HTTP"
+          }
+        ],
+        "HealthCheck": {
+          "Target": "HTTP:80/",
+          "HealthyThreshold": "3",
+          "UnhealthyThreshold": "5",
+          "Interval": "30",
+          "Timeout": "5"
+        }
+      }
     }
   },
   "Outputs": {
@@ -311,6 +341,23 @@
     "LaunchConfiguration": {
       "Value": {
         "Ref": "CustomLaunchConfiguration"
+      }
+    },
+    "ELB": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt": [
+                "ElasticLoadBalancer",
+                "DNSName"
+              ]
+            },
+            "/"
+          ]
+        ]
       }
     }
   }
