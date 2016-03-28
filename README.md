@@ -335,7 +335,7 @@ CFN Stack ==> (API call to lambda::InvokeFunction) ==> Lambda function with an e
 
 Lambda function ==> API call (PUT via HTTPS) to ResponseURL (pre-signed S3 bucket) (can contain a "Data")
 
-## ASG Rolling Updates (IN PROGRESS)
+## ASG Rolling Updates
 
 * It's done through the UpdatePolicy
 
