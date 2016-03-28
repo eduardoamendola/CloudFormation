@@ -9,7 +9,7 @@ Collection of templates and docs related to Cloud Formation during my studies
 * Review the latest release notes
 * What's CFN's guarantee during stack updates/creates
 * What happens during Cleanup after stack update[why does CFN try to give each resource a unique name?]
-* More studies about rolling updates
+* Read the latest blog articles
 
 ### Goals
 
@@ -26,7 +26,6 @@ Collection of templates and docs related to Cloud Formation during my studies
 * Learn how cloudformation sets up AutoScaling/LaunchConfiguration to perform migrations with zero downtime
 * Learn possible ways to customize the cfn-init in a way that to optimize timeout periods
 * Understand CFN tags on resources
-* 
 
 ### Features
 
@@ -78,6 +77,10 @@ $ cfn-get-metadata --access-key XXXX --secret-key XXXX
 
 * CFN tags every resource it can, so given an instance you should be able to lookup the tags and get me the stack ARN.
 
+### Tags 
+
+CFN tags every resource it can, so given an instance you should be able to lookup the tags and get me the stack ARN.
+
 There are 3 tags that are added by cfn by default:
 
 aws:cloudformation:logical-id
@@ -111,11 +114,13 @@ $
 ### JSON Tools 
 
 #### Validators
+
 * JSONLint - The JSON Validator: http://jsonlint.com/
 * JSON Validator: http://www.freeformatter.com/json-validator.html
 * JSON formater and validator: http://jsonformatter.curiousconcept.com/
 
 #### Viewers
+
 * JQ - Lightweight and flexible command-line JSON processor: http://stedolan.github.io/jq/
 
 #### Sublime editor plugins
@@ -124,6 +129,7 @@ $
 * Cform (CloudFormation syntax): https://github.com/beaknit/cform
 
 ## Documentation
+
 * CloudFormation User-guide: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html
 * Developer Tools: http://aws.amazon.com/developertools/AWS-CloudFormation?browse=1
 * Official public articles and tutorials: http://aws.amazon.com/cloudformation/aws-cloudformation-articles-and-tutorials/
