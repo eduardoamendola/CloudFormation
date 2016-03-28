@@ -7,6 +7,9 @@ Collection of templates and docs related to Cloud Formation during my studies
 ## To-Do
 
 * Review the latest release notes
+* What's CFN's guarantee during stack updates/creates
+* What happens during Cleanup after stack update[why does CFN try to give each resource a unique name?]
+* More studies about rolling updates
 
 ### Goals
 
@@ -22,6 +25,8 @@ Collection of templates and docs related to Cloud Formation during my studies
 * Understand how to use custom resources (Lambda functions, SNS topics, etc)
 * Learn how cloudformation sets up AutoScaling/LaunchConfiguration to perform migrations with zero downtime
 * Learn possible ways to customize the cfn-init in a way that to optimize timeout periods
+* Understand CFN tags on resources
+* 
 
 ### Features
 
@@ -71,7 +76,19 @@ $ cfn-get-metadata --access-key XXXX --secret-key XXXX
 
 * Whenever you create a stack through the AWS CLI, it uses Python 2.7 running Boto libs to connect to AWS via HTTP, through a regional endpoint of the service (i.e: https://cloudformation.eu-west-1.amazonaws.com/), via HTTPS, to make an HTTP POST to a rest API service, and then such api call that creates the stack. After that, it can return the following response codes:
 
--=- create-stack or update-stack -=-
+* CFN tags every resource it can, so given an instance you should be able to lookup the tags and get me the stack ARN.
+
+There are 3 tags that are added by cfn by default:
+
+aws:cloudformation:logical-id
+aws:cloudformation:stack-id
+aws:cloudformation:stack-name
+
+Note: They can't be removed. Even if you retain the resource and delete the stack, it's still not possible to delete them.
+
+### CLI Specifics
+
+#### create-stack / update-stack
 
 Returns a 200 response code (HTTP OK), which will also contain some data, such as the RequestID of the stack creation, as well as the ARN of the new stack that's being created. Example captured with --debug argument of the aws CLI command:
 
@@ -101,10 +118,16 @@ $
 #### Viewers
 * JQ - Lightweight and flexible command-line JSON processor: http://stedolan.github.io/jq/
 
+#### Sublime editor plugins
+
+* Pretty JSON: https://github.com/dzhibas/SublimePrettyJson
+* Cform (CloudFormation syntax): https://github.com/beaknit/cform
+
 ## Documentation
 * CloudFormation User-guide: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html
 * Developer Tools: http://aws.amazon.com/developertools/AWS-CloudFormation?browse=1
 * Official public articles and tutorials: http://aws.amazon.com/cloudformation/aws-cloudformation-articles-and-tutorials/
+* CFN Blog: https://blogs.aws.amazon.com/application-management/blog/tag/CloudFormation
 
 ## Helper Scripts
 
@@ -306,7 +329,7 @@ CFN Stack ==> (API call to lambda::InvokeFunction) ==> Lambda function with an e
 
 Lambda function ==> API call (PUT via HTTPS) to ResponseURL (pre-signed S3 bucket) (can contain a "Data")
 
-## ASG rollout update (IN PROGRESS)
+## ASG Rolling Updates (IN PROGRESS)
 
 * It's done through the UpdatePolicy
 
@@ -320,17 +343,27 @@ Rolling update initiated. Terminating N obsolete instance(s) in batches of N,
 
 * PauseTime: If you specify the WaitOnResourceSignals property, the PauseTime becomes the amount of time to wait until the ASG receives the required number of signals. It's recommended to enter a value that is enough time for the instances to run their UserData scripts in time.
 
-If WaitOnResourceSignals+PauseTime is specified, you gotta make sure you have added enough time to the pausetime to be able to receive the amount of signals. Otherwise, CloudFormation is going to rollback, with the error "Failed to receive X resource signal(s) within the specified duration". However, during rollback process, if you only made "replacement" kind of updates in your LC, it's going to go through the rollback process by respecting the updatepolicy too, so it will fail again which will result in UPDATE_ROLLBACK_FAILURE.
+If WaitOnResourceSignals+PauseTime is specified, you gotta make sure you have added enough time to the PauseTime to be able to receive the amount of signals. Otherwise, CloudFormation is going to rollback, with the error "Failed to receive X resource signal(s) within the specified duration". However, during rollback process, if you only made "replacement" kind of updates in your LC, it's going to go through the rollback process by respecting the updatepolicy too, so it will fail again which will result in UPDATE_ROLLBACK_FAILURE.
 
 If you use the "Continue Rollback Update" option, enough time after the amount of time you think your instances would be able to finish what they are doing and send the signal to CFN, than it should work just fine (and initate the ROLLBACK_COMPLETE_CLEANUP process, which would remove the unused resources).
 
+* MinSuccessfulInstancesPercent:
+
+It was released by the request of big services like Lambda that launch hundreds of instances and have a handful that fail; that shouldn't cause a rollback so the min percentage was added to Rolling Updates. This is a big feature of rolling updates.
+
+Basically, you simply set the percentage of instances you need up during the update and by the end of the update (regarless if it timed out for some instances), it checks if the amount of signals was able to satisfy the specified percentage. Here's an example of an error message in case it doesn't satisfy:
+
+```
+  Received 1 FAILURE signal(s) out of 9. Unable to satisfy 95% MinSuccessfulInstancesPercent requirement
+```
+
+In the case above, it will simply initiate the rollback, since it didn't satisfy the wanted percentage.
+
 How can you make the update with zero downtime?
 
-First, you must make sure the ASG is running behind an ELB already, so they can have an endpoint set-up in their DNS to make the ELB to load the balance among the ASG instances already.
+First, you must make sure the ASG is running behind an ELB already, so they can have an endpoint set-up in their DNS to make the ELB to balance the traffic load among the ASG instances.
 
-If not, the ELB name(s) must be added to the ASG property "LoadBalancerNames", PLUS the HealthCheckType (ELB instead of EC2) and HealthCheckGracePeriod must be set.
-
-Adding the ELB to the ASG, and setting HealthCheckType and HealthCheckGracePeriod to your ASG. 
+If not, a blue-green deployment method must be created. So you can replicate the stack to another one, and the ELB name(s) must be added to the ASG property "LoadBalancerNames", PLUS the HealthCheckType (ELB instead of EC2) and HealthCheckGracePeriod must be set.
 
 Note from ASG docs: If you have attached a load balancer to your Auto Scaling group, you can optionally have Auto Scaling include the results of Elastic Load Balancing health checks when determining the health status of an instance. After you add ELB health checks, Auto Scaling also marks an instance as unhealthy if Elastic Load Balancing reports the instance state as OutOfService. 
 

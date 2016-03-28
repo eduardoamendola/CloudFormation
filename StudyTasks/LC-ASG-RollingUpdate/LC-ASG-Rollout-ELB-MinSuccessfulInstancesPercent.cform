@@ -1,0 +1,365 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "CFN stack that creates ASG, LaunchConfiguration, and an UpdatePolicy for AutoScaling rollout",
+  "Parameters": {
+    "AMI": {
+      "Description": "AMI ID that is going to be used by the ASG",
+      "Type": "String",
+      "Default": "ami-e4d18e93",
+      "MinLength": "10",
+      "MaxLength": "15"
+    },
+    "InstanceType": {
+      "Description": "Instance Type that is going to be set-up for the instances in ASG",
+      "Type": "String",
+      "Default": "t2.micro"
+    },
+    "KeyName": {
+      "Description": "Name of Key Pair that is going to be used by the instances launched in ASG",
+      "Type": "String",
+      "Default": "LinuxKey"
+    }
+  },
+  "Resources": {
+    "InstanceSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable SSH access via port 22",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "CustomLaunchConfiguration": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "SetupAndRun": [
+              "Install",
+              "Configure",
+              "Run"
+            ]
+          },
+          "Install": {
+            "packages": {
+              "yum": {
+                "httpd": [],
+                "php": []
+              }
+            }
+          },
+          "Configure": {
+            "files": {
+              "/var/www/html/index.php": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "<html>\n",
+                      "  <head>\n",
+                      "    <title>AWS CloudFormation PHP Sample</title>\n",
+                      "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\">\n",
+                      "  </head>\n",
+                      "  <body>\n",
+                      "    <h1>Welcome to the AWS CloudFormation PHP Sample</h1>\n",
+                      "    <p/>\n",
+                      "*** TESTING percentage, forcing failure in short 2m update ***\n",
+                      "   <P><h1>\n\n\n-=- UPDATED version for stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      " -=-\n\n\n</H1><P>\n",
+                      "    <?php\n",
+                      "      // Print out the current data and time\n",
+                      "      print \"The Current Date and Time is: <br/>\";\n",
+                      "      print date(\"g:i A l, F j Y.\");\n",
+                      "    ?>\n",
+                      "    <p/>\n",
+                      "    <?php\n",
+                      "      // Setup a handle for CURL\n",
+                      "      $curl_handle=curl_init();\n",
+                      "      curl_setopt($curl_handle,CURLOPT_CONNECTTIMEOUT,2);\n",
+                      "      curl_setopt($curl_handle,CURLOPT_RETURNTRANSFER,1);\n",
+                      "      // Get the hostname of the intance from the instance metadata\n",
+                      "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/public-hostname');\n",
+                      "      $hostname = curl_exec($curl_handle);\n",
+                      "      if (empty($hostname))\n",
+                      "      {\n",
+                      "        print \"Sorry, for some reason, we got no hostname back <br />\";\n",
+                      "      }\n",
+                      "      else\n",
+                      "      {\n",
+                      "        print \"Server = \" . $hostname . \"<br />\";\n",
+                      "      }\n",
+                      "      // Get the instance-id of the intance from the instance metadata\n",
+                      "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/instance-id');\n",
+                      "      $instanceid = curl_exec($curl_handle);\n",
+                      "      if (empty($instanceid))\n",
+                      "      {\n",
+                      "        print \"Sorry, for some reason, we got no instance id back <br />\";\n",
+                      "      }\n",
+                      "      else\n",
+                      "      {\n",
+                      "        print \"EC2 instance-id = \" . $instanceid . \"<br />\";\n",
+                      "      }\n",
+                      "    ?>\n",
+                      "    <h2>PHP Information</h2>\n",
+                      "    <p/>\n",
+                      "    <?php\n",
+                      "      phpinfo();\n",
+                      "    ?>\n",
+                      "  </body>\n",
+                      "</html>\n"
+                    ]
+                  ]
+                },
+                "mode": "000600",
+                "owner": "apache",
+                "group": "apache"
+              },
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      {
+                        "Ref": "AWS::StackId"
+                      },
+                      "\n",
+                      "region=",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.CustomLaunchConfiguration.Metadata.AWS::CloudFormation::Init\n",
+                      "action=/opt/aws/bin/cfn-init -v ",
+                      "         --stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "         --resource CustomLaunchConfiguration ",
+                      "         --configsets SetupAndRun ",
+                      "         --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n",
+                      "runas=root\n"
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "Run": {
+            "services": {
+              "sysvinit": {
+                "httpd": {
+                  "enabled": "true",
+                  "ensureRunning": "true"
+                },
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "ImageId": {
+          "Ref": "AMI"
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "InstanceSecurityGroup"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "yum update -y aws-cfn-bootstrap\n\n",
+                "exec &> /tmp/userdata.log\n\n",
+                "# Changing interval time of cfn-hup to expedite updates\n",
+                "sed -i 's/interval = 15/interval = 1/g' /opt/aws/bin/cfn-hup\n\n",
+                "# Helper function\n",
+                "function error_exit\n",
+                "{\n",
+                "  /usr/local/bin/cfn-signal -e 1 -r \"$1\" ",
+                " --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " --resource CustomASG ",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "  exit 1\n",
+                "}\n",
+                "# Setup the packages, files and services from the metadata\n",
+                "/opt/aws/bin/cfn-init -v ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource CustomLaunchConfiguration ",
+                "         --configsets SetupAndRun ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "|| error_exit 'CFN-Init failed to setup the app'\n\n",
+                "# Assuming all above worked well, let's signal success to the ASG\n",
+                "/opt/aws/bin/cfn-signal -e 0 --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " --resource CustomASG ",
+                " --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "CustomASG": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "HealthCheckType": "ELB",
+        "HealthCheckGracePeriod": "30",
+        "LoadBalancerNames": [
+          {
+            "Ref": "ElasticLoadBalancer"
+          }
+        ],
+        "AvailabilityZones": {
+          "Fn::GetAZs": ""
+        },
+        "LaunchConfigurationName": {
+          "Ref": "CustomLaunchConfiguration"
+        },
+        "MinSize": "5",
+        "MaxSize": "15",
+        "DesiredCapacity": "10"
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "7",
+          "Timeout": "PT30M"
+        }
+      },
+      "UpdatePolicy": {
+        "AutoScalingScheduledAction": {
+          "IgnoreUnmodifiedGroupSizeProperties": "true"
+        },
+        "AutoScalingRollingUpdate": {
+          "MinSuccessfulInstancesPercent": "95",
+          "MaxBatchSize": "3",
+          "PauseTime": "PT3M",
+          "WaitOnResourceSignals": "true"
+        }
+      }
+    },
+    "ElasticLoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "Subnets": [
+          "subnet-7b52e21e",
+          "subnet-b78a77ee",
+          "subnet-a416cfd3"
+        ],
+        "Listeners": [
+          {
+            "LoadBalancerPort": "80",
+            "InstancePort": "80",
+            "Protocol": "HTTP"
+          }
+        ],
+        "HealthCheck": {
+          "Target": "HTTP:80/",
+          "HealthyThreshold": "3",
+          "UnhealthyThreshold": "5",
+          "Interval": "30",
+          "Timeout": "5"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "AutoScalingGroup": {
+      "Value": {
+        "Ref": "CustomASG"
+      }
+    },
+    "LaunchConfiguration": {
+      "Value": {
+        "Ref": "CustomLaunchConfiguration"
+      }
+    },
+    "ELB": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt": [
+                "ElasticLoadBalancer",
+                "DNSName"
+              ]
+            },
+            "/"
+          ]
+        ]
+      }
+    }
+  }
+}
