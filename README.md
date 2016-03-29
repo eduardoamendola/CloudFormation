@@ -77,6 +77,19 @@ $ cfn-get-metadata --access-key XXXX --secret-key XXXX
 
 * CFN tags every resource it can, so given an instance you should be able to lookup the tags and get me the stack ARN.
 
+* CloudFormation guarantees that the stack matches the physical resources, based on the current template. Basically, CloudFormation guarantees that every creation/update will be either 100% successful, or 100% rolled back. For example, if you are creating/updating 5 resources but only one fails, CloudFormation is going rollback everything, including the other 4 ones that completed successfully. 
+
+* CloudFormation always wants to be able to roll back, so it'll create new resources to replace the old ones. If the update works, the old
+resources are deleted in the CLEANUP process. If the update fails, the old resources are still around. This applies for resources that require replacement.
+
+* CloudFormation released a new feature on the 26th of February of 2016 that solved the problems with stacks stuck in DELETE_FAILED: the "RetainResources" parameter. You can retain the problematic resources and delete the rest of the stack, and then you can manually delete them after. That's only available via CLI/API, not via Console.
+ 
+Example:
+
+```bash
+$ aws cloudformation delete-stack --stack-name my-problematic-stack --retain-resources "AWSEBSecurityGroup" "AWSEBLoadBalancerSecurityGroup"
+```
+
 ### Tags 
 
 CFN tags every resource it can, so given an instance you should be able to lookup the tags and get me the stack ARN.
