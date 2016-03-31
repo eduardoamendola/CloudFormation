@@ -378,6 +378,10 @@ Basically, you simply set the percentage of instances you need up during the upd
 
 In the case above, it will simply initiate the rollback, since it didn't satisfy the wanted percentage.
 
+* AutoScalingScheduledAction -> IgnoreUnmodifiedGroupSizeProperties:
+
+Set as false by default. If set as true, it ignores any group size property differences (min size, max size, or desired capacity) between your current Auto Scaling group and the current AWS::AutoScaling::AutoScalingGroup resource of your stack.
+
 How can you make the update with zero downtime?
 
 First, you must make sure the ASG is running behind an ELB already, so they can have an endpoint set-up in their DNS to make the ELB to balance the traffic load among the ASG instances.
