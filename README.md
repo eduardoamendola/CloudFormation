@@ -7,8 +7,6 @@ Collection of templates and docs related to Cloud Formation during my studies
 ## To-Do
 
 * Review the latest release notes
-* What's CFN's guarantee during stack updates/creates
-* What happens during Cleanup after stack update[why does CFN try to give each resource a unique name?]
 * Read the latest blog articles
 
 ### Goals
@@ -174,7 +172,7 @@ Command workflow:
 
 1. It connects to the CloudFormation regional endpoint through https and reads the template from that stack, going through the metadata (AWS::CloudFormation::Init key) of the specified Resource.
 2. Runs the ConfigSets from the C (checks for "config" key if not specified)
-3. Once the ConfigSets are executed, cfn-init sends a "SignalResource" to CloudFormation to notify if specified resource was created/updated/deleted with either a success or failure status. Behind the curtains, this is done through an S3 signed-url via a regional s3 bucket. Additionally, signal contains the UniqueId, which is the instance id.
+3. Once the ConfigSets are executed, it connects to an S3 signed-url via a regional s3 bucket, but I'm not sure about the reason why.
 
 ### CFN-Hup
 
@@ -205,7 +203,9 @@ Daemon workflow:
 1. Once started, the daemon checks /etc/cfn/cfn-hup.conf for stacks to check.
 2. Daemon connects to the regional CloudFormation endpoint via HTTPS to retrieve the meta-data from those stacks.
 3. If the HTTP header from response has a different 'x-amzn-requestid', daemon checks hooks in /etc/cfn/hooks.d/ for triggers related to the new stack state. If yes, the "action" is executed. Normally it's good practice to add the cfn-init to run here, just like it's set-up in user-data.
-4. Once the action is executed, cfn-hup sends a "SignalResource" to CloudFormation to notify if specified resource was created/updated/deleted with either a success or failure status. Behind the curtains, this is done through an S3 signed-url via a regional s3 bucket. Additionally, signal contains the UniqueId, which is the instance id.
+4. Daemon keeps running and checking the resources every 15 minutes for modifications in the metadata and repeats step 3. In case you want to customize the 15-minute execution interval, you can change this value in /opt/aws/bin/cfn-hup, on line 78 (interval variable). 
+
+ATTENTION: cfn-hup does not send any sort of signals to CloudFormation, it makes no difference to the stack, so stack update completes and that's it, then the daemon runs and executes whatever actions it is configured to, every N minutes (defined in interval, 15 by default).
 
 ### CFN-Get-Metadata
 
@@ -245,7 +245,7 @@ Command workflow:
 
 ### CFN-Signal
 
-A way to send signals to a resource in the stack (like a WaitConditionHandler, as part of a WaitCondition resource). It's used with the command cfn-signal and it can send customized error messages to stack too (-r or --reason attributes).
+A way to send signals to a resource in the stack (like a WaitConditionHandler, as part of a WaitCondition resource, or a CreationPolicy attribute). It's used with the command cfn-signal and it can send customized error messages to stack too (-r or --reason attributes).
 
 Requires:
 
@@ -331,7 +331,7 @@ Here is the full work flow:
 
 1. SNS ==> Subscribes to an SQS queue.
 2. EC2 Instance checks the SQS queue with the aws-cfn-resource-bridge framework and act accordingly to the JSON definition there. 
-3. Response is sent through a PUT via HTTPS on the ResponseURL (pre-signed S3 bucket) 
+3. Response is sent by cfn-bridge through a PUT via HTTPS on the ResponseURL (pre-signed S3 bucket) 
 
 #### Lambda
 
@@ -347,6 +347,14 @@ Here is the full work flow:
 CFN Stack ==> (API call to lambda::InvokeFunction) ==> Lambda function with an execution role with the right permissions (logs:* and cloudformation:DescribeStacks).
 
 Lambda function ==> API call (PUT via HTTPS) to ResponseURL (pre-signed S3 bucket) (can contain a "Data")
+
+## LaunchConfiguration updates
+
+When you update a property of the LaunchConfiguration resource, AWS CloudFormation deletes that resource and creates a new launch configuration with the updated properties and a new name. 
+
+This update action does not deploy any change across the running Amazon EC2 instances in the auto scaling group. In other words, an update simply replaces the LaunchConfiguration so that when the auto scaling group launches new instances, they will get the updated configuration, but existing instances continue to run with the configuration that they were originally launched with. This works the same way as if you made similar changes manually to an auto scaling group.
+
+If you want to update existing instances when you update the LaunchConfiguration resource, you must specify an update policy attribute for the AWS::AutoScaling::AutoScalingGroup resource. For more information, see UpdatePolicy (ASG Rolling Updates).
 
 ## ASG Rolling Updates
 
@@ -389,5 +397,21 @@ First, you must make sure the ASG is running behind an ELB already, so they can 
 If not, a blue-green deployment method must be created. So you can replicate the stack to another one, and the ELB name(s) must be added to the ASG property "LoadBalancerNames", PLUS the HealthCheckType (ELB instead of EC2) and HealthCheckGracePeriod must be set.
 
 Note from ASG docs: If you have attached a load balancer to your Auto Scaling group, you can optionally have Auto Scaling include the results of Elastic Load Balancing health checks when determining the health status of an instance. After you add ELB health checks, Auto Scaling also marks an instance as unhealthy if Elastic Load Balancing reports the instance state as OutOfService. 
+
+## Stack CLEANUP Process
+
+CloudFormation always wants to be able to roll back, so it'll create new resources to replace the old ones. If the update works, the old
+resources are deleted in the CLEANUP process. If the update fails, the old resources are still around. This applies for resources that require replacement.
+
+What happens during Cleanup after stack update?
+
+It deletes the resources that are not used anymore after an update is successfully completed. For example: Let's say you need to update a LaunchConfiguration, which is a resource that can't be edited so it has to be replaced. What CFN does is that it creates a new one, and once the new one is created successfully and replaced on the stack, it initiates the CLEANUP process to delete the old one.
+
+Why does CFN try to give each resource a unique name?
+
+If you're updating a resource that can't be edited, CFN creates a new one to replace it. However, as per example above, if you are creating a LaunchConfiguration and it already has a defined name, it won't be possible to create a new one with the same name. Therefore, CloudFormation creates a new one with a new random name. 
+
+In case you have an ASG associated with this LC via a Ref function (and not hard-coded), than CFN replaces it for you as well but the update on the instances will only occur if you have a UpdatePolicy set-up.
+
 
 
