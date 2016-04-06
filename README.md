@@ -247,6 +247,8 @@ Command workflow:
 
 A way to send signals to a resource in the stack (like a WaitConditionHandler, as part of a WaitCondition resource, or a CreationPolicy attribute). It's used with the command cfn-signal and it can send customized error messages to stack too (-r or --reason attributes).
 
+If you do not specify region, it tries to send the signal to the default region (us-east-1).
+
 Requires:
 
 * Region
