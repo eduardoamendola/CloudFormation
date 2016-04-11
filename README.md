@@ -146,6 +146,20 @@ $
 * Official public articles and tutorials: http://aws.amazon.com/cloudformation/aws-cloudformation-articles-and-tutorials/
 * CFN Blog: https://blogs.aws.amazon.com/application-management/blog/tag/CloudFormation
 
+## Cloud-Init
+
+Cloud-Init was created by Canonical, although the documentation is hosted by redhat (https://cloudinit.readthedocs.org/en/latest/).
+
+It's basically a set of python scripts using boto library, that can be used to ease your bootstraping with EC2. It's not only exclusive to EC2, since it works for cloudstack, openstack, etc. 
+
+In terms of CFN, the CFN helper scripts use cloud-init under the hood to take care of the communication with the AWS endpoints via HTTPS.
+
+Additionally, they are responsible for:
+
+* Executing user-data
+* Set-up ssh keys in .ssh/authorized_keys
+* Set-up mounting points for ephemeral disks (if existent)
+
 ## Helper Scripts
 
 AWS CloudFormation includes a set of helper scripts (cfn-init, cfn-signal, cfn-get-metadata, and cfn-hup) that are based on cloud-init. You call these helper scripts from your AWS CloudFormation templates to install, configure, and update applications on Amazon EC2 instances that are in the same template.
@@ -400,6 +414,8 @@ If not, a blue-green deployment method must be created. So you can replicate the
 
 Note from ASG docs: If you have attached a load balancer to your Auto Scaling group, you can optionally have Auto Scaling include the results of Elastic Load Balancing health checks when determining the health status of an instance. After you add ELB health checks, Auto Scaling also marks an instance as unhealthy if Elastic Load Balancing reports the instance state as OutOfService. 
 
+* If DesiredCount is not set on the ASG, CFN won't check the modified number of running instances on stack while performing an update.
+
 ## Stack CLEANUP Process
 
 CloudFormation always wants to be able to roll back, so it'll create new resources to replace the old ones. If the update works, the old
@@ -411,9 +427,14 @@ It deletes the resources that are not used anymore after an update is successful
 
 Why does CFN try to give each resource a unique name?
 
+The main reason is to be able to rollback. So it needs unique ids to be able to track old and new resources.
+
 If you're updating a resource that can't be edited, CFN creates a new one to replace it. However, as per example above, if you are creating a LaunchConfiguration and it already has a defined name, it won't be possible to create a new one with the same name. Therefore, CloudFormation creates a new one with a new random name. 
 
 In case you have an ASG associated with this LC via a Ref function (and not hard-coded), than CFN replaces it for you as well but the update on the instances will only occur if you have a UpdatePolicy set-up.
 
+## Stack Policies
 
+* Applies only to stack updates, to prevent accidental updates to certain stack resources. It's basically a way to protect the stack from bad updates the user may perform on resources that are too sensitive.
+* If added, stack policies will deny updates on all resources by default. So everything must be allowed individually in the policy in order to perfom an update.
 
