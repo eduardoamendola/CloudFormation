@@ -93,9 +93,9 @@ CFN tags every resource it can, so given an instance you should be able to looku
 
 There are 3 tags that are added by cfn by default:
 
-aws:cloudformation:logical-id
-aws:cloudformation:stack-id
-aws:cloudformation:stack-name
+* aws:cloudformation:logical-id
+* aws:cloudformation:stack-id
+* aws:cloudformation:stack-name
 
 Note: They can't be removed. Even if you retain the resource and delete the stack, it's still not possible to delete them.
 
