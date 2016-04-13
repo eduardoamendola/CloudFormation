@@ -262,7 +262,7 @@ Command workflow:
 
 ### CFN-Signal
 
-A way to send signals to a resource in the stack (like a WaitConditionHandler, as part of a WaitCondition resource, or a CreationPolicy attribute). It's used with the command cfn-signal and it can send customized error messages to stack too (-r or --reason attributes).
+A way to send signals to a resource in the stack (like a WaitConditionHandle, as part of a WaitCondition resource, or a CreationPolicy attribute). It's used with the command cfn-signal and it can send customized error messages to stack too (-r or --reason attributes).
 
 If you do not specify region, it tries to send the signal to the default region (us-east-1).
 
@@ -271,8 +271,9 @@ Requires:
 * Region
 * Stack
 * Resource
+* waitconditionhandle.url (only if signaling a wait condition handle)
 
-Example: 
+Example to signal a Creation Policy: 
 
 ```bash
 $ sudo /opt/aws/bin/cfn-signal --stack openvpn   
@@ -280,10 +281,25 @@ $ sudo /opt/aws/bin/cfn-signal --stack openvpn
                                --region eu-west-1
 ```
 
+Example for a WaitConditionHandle:
+
+```bash
+$ sudo /opt/aws/bin/cfn-signal --success|-s signal.to.send \
+        --reason|-r resource.status.reason \
+        --data|-d data \
+        --id|-i unique.id \
+        --exit-code|-e exit.code \
+        waitconditionhandle.url
+```
+
 Command workflow:
 
 1. If the unique id (cfn-signal -i) is not passed via the parameters, the command checks the current instance id in 169.254.169.254/latest/meta-data/instance-id
-2. It connects to the wait-condition handle address, which is actually a CNAME to a regional s3 bucket.
+
+2. Then there are 2 possible behavious:
+ -- If signalling a CreationPolicy, it connects to the CFN regional endpoint 
+ -- If signalling a WaitConditionHandle, it connects to the wait-condition handle URL, which is actually a CNAME to a regional s3 bucket signed-url
+
 3. It posts a json-formatted response through a HTTP Request (PUT) to that pre-signed s3 URL. The Json must contain "Status", "UniqueId", "Data" and "Reason". Ex:
 
 ```json
