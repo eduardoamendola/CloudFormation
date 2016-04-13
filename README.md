@@ -79,8 +79,8 @@ $ cfn-get-metadata --access-key XXXX --secret-key XXXX
 * CloudFormation always wants to be able to roll back, so it'll create new resources to replace the old ones. If the update works, the old
 resources are deleted in the CLEANUP process. If the update fails, the old resources are still around. This applies for resources that require replacement.
 
-* CloudFormation released a new feature on the 26th of February of 2016 that solved the problems with stacks stuck in DELETE_FAILED: the "RetainResources" parameter. You can retain the problematic resources and delete the rest of the stack, and then you can manually delete them after. That's only available via CLI/API, not via Console.
- 
+* CloudFormation released a new feature on the 26th of February of 2016 that solved the problems with stacks stuck in DELETE_FAILED: the "RetainResources" parameter. You can retain the problematic resources and delete the rest of the stack, and then you can manually delete them after. That's only available via CLI/API, not via Console. If used, CFN events are going to show the retained resources as "DELETE_SKIPPED" and deletion should complete just fine.
+
 Example:
 
 ```bash
