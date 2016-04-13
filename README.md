@@ -99,6 +99,10 @@ aws:cloudformation:stack-name
 
 Note: They can't be removed. Even if you retain the resource and delete the stack, it's still not possible to delete them.
 
+However, some resources do not support tags, such as EBS volumes that are created from block device mappings. In that case, the way would be to check the physical resource ID and check if it's the same one on your stacks. 
+
+Additionally, if CloudTrail is enabled, you can check for the api calls that initiated the resource creation. So you can check if "invokedBy", "sourceIPAddress" and "userAgent" properties are set as "cloudformation.amazonaws.com".
+
 ### CLI Specifics
 
 #### create-stack / update-stack
