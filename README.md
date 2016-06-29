@@ -151,7 +151,7 @@ $
 
 ## Cloud-Init
 
-Cloud-Init was created by Canonical, although the documentation is hosted by redhat (https://cloudinit.readthedocs.org/en/latest/).
+Cloud-Init was created by Canonical, official documentation can be found here (https://cloudinit.readthedocs.org/en/latest/).
 
 It's basically a set of python scripts using boto library, that can be used to ease your bootstraping with EC2. It's not only exclusive to EC2, since it works for cloudstack, openstack, etc. 
 
