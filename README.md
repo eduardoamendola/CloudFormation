@@ -207,7 +207,7 @@ region=eu-west-1
 
 * hooks.conf: Contains the user actions that the cfn-hup daemon calls periodically. The hooks configuration file is loaded at cfn-hup daemon startup only, so new hooks will require the daemon to be restarted. A cache of previous metadata values is stored at /var/lib/cfn-hup/data/metadata_db (not human readable)—you can delete this cache to force cfn-hup to run all post.add actions again. Example of /etc/cfn/hooks.d/cfn-auto-reloader.conf: 
 
-```Ini
+```bash
 [cfn-auto-reloader-hook]
 triggers=post.update
 path=Resources.VPNInstanceVPC1.Metadata.AWS::CloudFormation::Init
